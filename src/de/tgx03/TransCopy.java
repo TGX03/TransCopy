@@ -10,7 +10,6 @@ import java.nio.file.StandardCopyOption;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 
 /**
  * A class intended to copy images and videos from one location to another,
@@ -30,6 +29,7 @@ public class TransCopy {
      * and when using NVENC for example not even possible.
      */
     private static final BlockingQueue<VideoOperation> VIDEO_QUEUE = new LinkedBlockingQueue<>();
+    private static final DynamicLatch COUNTDOWN = new DynamicLatch();
 
     /**
      * The source directory to copy the files from.
@@ -58,7 +58,7 @@ public class TransCopy {
      *
      * @param args First argument is the source, second is the target, third is the Handbrake executable and fourth is the name of the Handbrake preset.
      */
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         File source = new File(args[0]);
         sourcePath = source.toPath();
         targetPath = new File(args[1]).toPath();
@@ -94,7 +94,7 @@ public class TransCopy {
         encoder.start();
 
         traverseDirectory(source);
-        ForkJoinPool.commonPool().awaitQuiescence(Long.MAX_VALUE, TimeUnit.SECONDS);
+        COUNTDOWN.await();
         inputDone = true;
         copier.interrupt();
         encoder.interrupt();
@@ -107,9 +107,11 @@ public class TransCopy {
      */
     private static void traverseDirectory(File directory) {
         for (File file : directory.listFiles()) {
+            COUNTDOWN.countUp();
             ForkJoinPool.commonPool().execute(() -> {
                 if (file.isDirectory()) traverseDirectory(file);
                 else handleFile(file);
+                COUNTDOWN.countDown();
             });
         }
     }
@@ -241,13 +243,13 @@ public class TransCopy {
                 builder.redirectErrorStream(true);
                 Process encode = builder.start();
                 new StreamNuller(encode.getInputStream()).start();
-                if (encode.waitFor() == 0) {
-                    COPY_QUEUE.put(new MoveOperation(temp, target));
-                    Files.deleteIfExists(source);
-                } else System.err.println(sourcePath.relativize(source) + " failed to encode");
+                boolean successful;
+                do
+                {    // This loop is required as when the interrupt to recheck whether the input is done comes at the wrong time, the final encodings will be aborted.
+                    successful = await(encode);
+                } while (!successful);
             } catch (IOException e) {
                 e.printStackTrace();
-            } catch (InterruptedException ignored) {
             }
         }
 
@@ -266,6 +268,25 @@ public class TransCopy {
                 e.printStackTrace();
             }
             return false;
+        }
+
+        /**
+         * Wait for the encoding to finish. Returns false if the thread was interrupted.
+         *
+         * @param encode The process to wait for.
+         * @return Whether the process could finish without an interrupt.
+         * @throws IOException If the source file could not be deleted.
+         */
+        private boolean await(Process encode) throws IOException {
+            try {
+                if (encode.waitFor() == 0) {
+                    COPY_QUEUE.put(new MoveOperation(temp, target));
+                    Files.deleteIfExists(source);
+                } else System.err.println(sourcePath.relativize(source) + " failed to encode");
+                return true;
+            } catch (InterruptedException e) {
+                return false;
+            }
         }
     }
 }
