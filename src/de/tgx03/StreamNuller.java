@@ -1,6 +1,5 @@
 package de.tgx03;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -18,10 +17,10 @@ public class StreamNuller extends Thread {
      */
     public StreamNuller(InputStream input) {
         super(() -> {
-            BufferedReader reader = new BufferedReader(new InputStreamReader(input));
+            InputStreamReader reader = new InputStreamReader(input);
             char[] buffer = new char[1024];
             try {
-                while (reader.read(buffer) != -1) ;
+                while (reader.read(buffer) != -1);
             } catch (IOException e) {
                 e.printStackTrace();
             }
