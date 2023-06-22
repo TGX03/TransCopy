@@ -18,9 +18,9 @@ public class StreamNuller extends Thread {
     public StreamNuller(InputStream input) {
         super(() -> {
             BufferedReader reader = new BufferedReader(new InputStreamReader(input));
+            char[] buffer = new char[1024];
             try {
-                while (reader.readLine() != null) {
-                }
+                while (reader.read(buffer) != -1) ;
             } catch (IOException e) {
                 e.printStackTrace();
             }
