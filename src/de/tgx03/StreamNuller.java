@@ -13,6 +13,7 @@ public class StreamNuller extends Thread {
     /**
      * A thread object that empties the buffer of a given InputStream
      * to make sure the program doesn't get blocked as the buffer fills up.
+     *
      * @param input The input stream to empty.
      */
     public StreamNuller(InputStream input) {

@@ -18,8 +18,10 @@ public class DynamicLatch {
 
     /**
      * Increase the internal count of this latch by one.
+     *
+     * @throws IllegalStateException Gets thrown if the latch has already been broken.
      */
-    public void countUp() {
+    public void countUp() throws IllegalStateException {
         if (broken) throw new IllegalStateException("This latch has already been broken");
         count.incrementAndGet();
     }
@@ -27,8 +29,10 @@ public class DynamicLatch {
     /**
      * Decrease the internal count of this latch by one.
      * Release all waiting threads when it reaches 0.
+     *
+     * @throws IllegalStateException Gets thrown if the latch has already been broken.
      */
-    public void countDown() {
+    public void countDown() throws IllegalStateException {
         if (broken) throw new IllegalStateException("This latch has already been broken");
         int value = count.decrementAndGet();
         if (value == 0) {
