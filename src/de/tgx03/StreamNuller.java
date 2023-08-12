@@ -9,23 +9,23 @@ import java.io.InputStreamReader;
  */
 public class StreamNuller extends Thread {
 
-    /**
-     * A thread object that empties the buffer of a given InputStream
-     * to make sure the program doesn't get blocked as the buffer fills up.
-     *
-     * @param input The input stream to empty.
-     */
-    public StreamNuller(InputStream input) {
-        super(() -> {
-            InputStreamReader reader = new InputStreamReader(input);
-            char[] buffer = new char[1024];
-            try {
-                while (reader.read(buffer) != -1);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        });
-        super.setDaemon(true);
-        super.setPriority(Thread.MIN_PRIORITY);
-    }
+	/**
+	 * A thread object that empties the buffer of a given InputStream
+	 * to make sure the program doesn't get blocked as the buffer fills up.
+	 *
+	 * @param input The input stream to empty.
+	 */
+	public StreamNuller(InputStream input) {
+		super(() -> {
+			InputStreamReader reader = new InputStreamReader(input);
+			char[] buffer = new char[1024];
+			try {
+				while (reader.read(buffer) != -1) ;
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		});
+		super.setDaemon(true);
+		super.setPriority(Thread.MIN_PRIORITY);
+	}
 }

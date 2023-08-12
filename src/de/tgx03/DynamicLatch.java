@@ -7,48 +7,48 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class DynamicLatch {
 
-    /**
-     * The atomic integer actually used for counting.
-     */
-    private final AtomicInteger count = new AtomicInteger();
-    /**
-     * Whether this latch was already broken.
-     */
-    private volatile boolean broken = false;
+	/**
+	 * The atomic integer actually used for counting.
+	 */
+	private final AtomicInteger count = new AtomicInteger();
+	/**
+	 * Whether this latch was already broken.
+	 */
+	private volatile boolean broken = false;
 
-    /**
-     * Increase the internal count of this latch by one.
-     *
-     * @throws IllegalStateException Gets thrown if the latch has already been broken.
-     */
-    public void countUp() throws IllegalStateException {
-        if (broken) throw new IllegalStateException("This latch has already been broken");
-        count.incrementAndGet();
-    }
+	/**
+	 * Increase the internal count of this latch by one.
+	 *
+	 * @throws IllegalStateException Gets thrown if the latch has already been broken.
+	 */
+	public void countUp() throws IllegalStateException {
+		if (broken) throw new IllegalStateException("This latch has already been broken");
+		count.incrementAndGet();
+	}
 
-    /**
-     * Decrease the internal count of this latch by one.
-     * Release all waiting threads when it reaches 0.
-     *
-     * @throws IllegalStateException Gets thrown if the latch has already been broken.
-     */
-    public void countDown() throws IllegalStateException {
-        if (broken) throw new IllegalStateException("This latch has already been broken");
-        int value = count.decrementAndGet();
-        if (value == 0) {
-            broken = true;
-            synchronized (this) {
-                notifyAll();
-            }
-        }
-    }
+	/**
+	 * Decrease the internal count of this latch by one.
+	 * Release all waiting threads when it reaches 0.
+	 *
+	 * @throws IllegalStateException Gets thrown if the latch has already been broken.
+	 */
+	public void countDown() throws IllegalStateException {
+		if (broken) throw new IllegalStateException("This latch has already been broken");
+		int value = count.decrementAndGet();
+		if (value == 0) {
+			broken = true;
+			synchronized (this) {
+				notifyAll();
+			}
+		}
+	}
 
-    /**
-     * Wait until the latch reaches zero.
-     *
-     * @throws InterruptedException If the waiting thread gets interrupted.
-     */
-    public synchronized void await() throws InterruptedException {
-        while (!broken) wait();
-    }
+	/**
+	 * Wait until the latch reaches zero.
+	 *
+	 * @throws InterruptedException If the waiting thread gets interrupted.
+	 */
+	public synchronized void await() throws InterruptedException {
+		while (!broken) wait();
+	}
 }
