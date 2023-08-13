@@ -170,7 +170,7 @@ public class TransCopy {
 				if (!Files.exists(target.getParent())) {
 					Files.createDirectories(target.getParent());
 				}
-				System.out.println("Copying " + target.relativize(targetPath));
+				System.out.println("Copying " + targetPath.relativize(target));
 				Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
 			} catch (FileAlreadyExistsException ignored) {
 			} catch (IOException e) {
@@ -240,7 +240,7 @@ public class TransCopy {
 		@Override
 		public void run() {
 			try {
-				System.out.println("Encoding " + target.relativize(targetPath));
+				System.out.println("Encoding " + targetPath.relativize(target));
 				ProcessBuilder builder = new ProcessBuilder(handBrake, "--preset-import-gui", "-Z", presetName, "-i", source.toString(), "-o", temp.toString());
 				builder.redirectErrorStream(true);
 				Process encode = builder.start();
