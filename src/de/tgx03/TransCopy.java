@@ -219,7 +219,7 @@ public class TransCopy {
 		private final Path target;
 		/**
 		 * The location of the temporary file before the file gets copied to the final location.
-		 * Gets used as this toll was meant to be used to copy files over the network,
+		 * Gets used as this tool was meant to be used to copy files over the network,
 		 * and transcoding over the network is slow.
 		 */
 		private final Path temp;
