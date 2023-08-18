@@ -22,13 +22,13 @@ public class TransCopy {
 	 * The queue for file copy operations.
 	 * Used as parallel copy usually takes longer than serial.
 	 */
-	private static final BlockingQueue<MoveOperation> COPY_QUEUE = new LinkedBlockingQueue<>();
+	private static final BlockingQueue<Runnable> COPY_QUEUE = new LinkedBlockingQueue<>();
 	/**
 	 * A queue for video encodings.
 	 * Used as parallel encoding usually doesn't make much sense,
 	 * and when using NVENC for example not even possible.
 	 */
-	private static final BlockingQueue<VideoOperation> VIDEO_QUEUE = new LinkedBlockingQueue<>();
+	private static final BlockingQueue<Runnable> VIDEO_QUEUE = new LinkedBlockingQueue<>();
 	private static final DynamicLatch COUNTDOWN = new DynamicLatch();
 
 	/**
@@ -73,7 +73,7 @@ public class TransCopy {
 					// Probably means done was set
 				}
 			}
-			MoveOperation operation;
+			Runnable operation;
 			while ((operation = COPY_QUEUE.poll()) != null) operation.run();
 		});
 		copier.start();
@@ -86,7 +86,7 @@ public class TransCopy {
 					// Probably means done was set
 				}
 			}
-			VideoOperation operation;
+			Runnable operation;
 			while ((operation = VIDEO_QUEUE.poll()) != null) operation.run();
 			videoDone = true;
 			copier.interrupt();
@@ -157,25 +157,18 @@ public class TransCopy {
 	}
 
 	/**
-	 * A class representing a move operation of a file.
-	 *
-	 * @param source The source file.
-	 * @param target The target file.
+	 * A class representing an action to move a file to another location.
 	 */
-	private record MoveOperation(Path source, Path target) implements Runnable {
+	private static abstract class Operation implements Runnable {
 
-		@Override
-		public void run() {
-			try {
-				if (!Files.exists(target.getParent())) {
-					Files.createDirectories(target.getParent());
-				}
-				System.out.println("Copying " + targetPath.relativize(target));
-				Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
-			} catch (FileAlreadyExistsException ignored) {
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+		protected final Path source;
+		protected final Path target;
+		protected final Path relative;
+
+		public Operation(Path source, Path target) {
+			this.source = source;
+			this.target = target;
+			this.relative = targetPath.relativize(target);
 		}
 
 		/**
@@ -186,6 +179,7 @@ public class TransCopy {
 		public boolean deleteSourceIfExists() {
 			try {
 				if (Files.exists(target)) {
+					System.out.println("Deleting " + relative);
 					Files.delete(source);
 					return true;
 				}
@@ -197,9 +191,33 @@ public class TransCopy {
 	}
 
 	/**
+	 * A class representing a move operation of a file.
+	 */
+	private static class MoveOperation extends Operation {
+
+		public MoveOperation(Path source, Path target) {
+			super(source, target);
+		}
+
+		@Override
+		public void run() {
+			try {
+				if (!Files.exists(target.getParent())) {
+					Files.createDirectories(target.getParent());
+				}
+				System.out.println("Copying " + relative);
+				Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+			} catch (FileAlreadyExistsException ignored) {
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	/**
 	 * A class representing a transcode operation.
 	 */
-	private static class VideoOperation implements Runnable {
+	private static class VideoOperation extends Operation {
 
 		/**
 		 * The temporary directory of the system.
@@ -209,15 +227,6 @@ public class TransCopy {
 		 * The name of the Handbrake preset to use.
 		 */
 		private static String presetName;
-
-		/**
-		 * The source file.
-		 */
-		private final Path source;
-		/**
-		 * The target file.
-		 */
-		private final Path target;
 		/**
 		 * The location of the temporary file before the file gets copied to the final location.
 		 * Gets used as this tool was meant to be used to copy files over the network,
@@ -232,8 +241,7 @@ public class TransCopy {
 		 * @param target The target file.
 		 */
 		public VideoOperation(Path source, Path target) {
-			this.source = source;
-			this.target = target;
+			super(source, target);
 			temp = TEMP.resolve(source.getFileName());
 		}
 
@@ -256,23 +264,6 @@ public class TransCopy {
 		}
 
 		/**
-		 * Checks if the target already exists and then deletes the source.
-		 *
-		 * @return Whether the target already exists.
-		 */
-		public boolean deleteSourceIfExists() {
-			try {
-				if (Files.exists(target)) {
-					Files.delete(source);
-					return true;
-				}
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			return false;
-		}
-
-		/**
 		 * Wait for the encoding to finish. Returns false if the thread was interrupted.
 		 *
 		 * @param encode The process to wait for.
@@ -282,7 +273,17 @@ public class TransCopy {
 		private boolean await(Process encode) throws IOException {
 			try {
 				if (encode.waitFor() == 0) {
-					COPY_QUEUE.put(new MoveOperation(temp, target));
+					COPY_QUEUE.put(() -> {
+						try {
+							if (!Files.exists(target.getParent())) {
+								Files.createDirectories(target.getParent());
+							}
+							System.out.println("Copying " + relative);
+							Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+					});
 					Files.deleteIfExists(source);
 				} else System.err.println(sourcePath.relativize(source) + " failed to encode");
 				return true;
