@@ -29,6 +29,9 @@ public class TransCopy {
 	 * and when using NVENC for example not even possible.
 	 */
 	private static final BlockingQueue<Runnable> VIDEO_QUEUE = new LinkedBlockingQueue<>();
+	/**
+	 * The counter making sure all tasks have finished before exiting.
+	 */
 	private static final DynamicLatch COUNTDOWN = new DynamicLatch();
 
 	/**
@@ -106,6 +109,7 @@ public class TransCopy {
 	 * @param directory The current directory to scan.
 	 */
 	private static void traverseDirectory(File directory) {
+		assert directory != null && directory.isDirectory();
 		for (File file : directory.listFiles()) {
 			COUNTDOWN.countUp();
 			ForkJoinPool.commonPool().execute(() -> {
