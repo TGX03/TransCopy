@@ -283,7 +283,7 @@ public class TransCopy {
 								Files.createDirectories(target.getParent());
 							}
 							System.out.println("Copying " + relative);
-							Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+							Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING);
 						} catch (IOException e) {
 							e.printStackTrace();
 						}
