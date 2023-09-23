@@ -112,11 +112,14 @@ public class TransCopy {
 		assert directory != null && directory.isDirectory();
 		for (File file : directory.listFiles()) {
 			COUNTDOWN.countUp();
-			ForkJoinPool.commonPool().execute(() -> {
-				if (file.isDirectory()) traverseDirectory(file);
-				else handleFile(file);
+			if (file.isDirectory()) ForkJoinPool.commonPool().execute(() -> {
+				traverseDirectory(file);
 				COUNTDOWN.countDown();
 			});
+			else {
+				handleFile(file);
+				COUNTDOWN.countDown();
+			}
 		}
 	}
 
