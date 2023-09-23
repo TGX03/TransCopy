@@ -1,5 +1,7 @@
 package de.tgx03;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.URLConnection;
@@ -61,7 +63,7 @@ public class TransCopy {
 	 *
 	 * @param args First argument is the source, second is the target, third is the Handbrake executable and fourth is the name of the Handbrake preset.
 	 */
-	public static void main(String[] args) throws InterruptedException {
+	public static void main(@NotNull String @NotNull [] args) throws InterruptedException {
 		File source = new File(args[0]);
 		sourcePath = source.toPath();
 		targetPath = new File(args[1]).toPath();
@@ -108,8 +110,8 @@ public class TransCopy {
 	 *
 	 * @param directory The current directory to scan.
 	 */
-	private static void traverseDirectory(File directory) {
-		assert directory != null && directory.isDirectory();
+	private static void traverseDirectory(@NotNull File directory) {
+		assert directory.isDirectory();
 		for (File file : directory.listFiles()) {
 			COUNTDOWN.countUp();
 			if (file.isDirectory()) ForkJoinPool.commonPool().execute(() -> {
@@ -128,7 +130,7 @@ public class TransCopy {
 	 *
 	 * @param file The file to copy.
 	 */
-	private static void handleFile(File file) {
+	private static void handleFile(@NotNull File file) {
 		assert !file.isDirectory();
 
 		// Determine the type of file.
@@ -168,11 +170,26 @@ public class TransCopy {
 	 */
 	private static abstract class Operation implements Runnable {
 
+		/**
+		 * The source path.
+		 */
 		protected final Path source;
+		/**
+		 * The target path of the move operation.
+		 */
 		protected final Path target;
+		/**
+		 * The Path relative to the parent directories.
+		 */
 		protected final Path relative;
 
-		public Operation(Path source, Path target) {
+		/**
+		 * Creates a new Operation to move on file between two locations.
+		 *
+		 * @param source The source path.
+		 * @param target The target path.
+		 */
+		public Operation(@NotNull Path source, @NotNull Path target) {
 			this.source = source;
 			this.target = target;
 			this.relative = targetPath.relativize(target);
@@ -202,7 +219,13 @@ public class TransCopy {
 	 */
 	private static class MoveOperation extends Operation {
 
-		public MoveOperation(Path source, Path target) {
+		/**
+		 * Creates a new operation to move a file from one location to another.
+		 *
+		 * @param source The source file.
+		 * @param target The target file.
+		 */
+		public MoveOperation(@NotNull Path source, @NotNull Path target) {
 			super(source, target);
 		}
 
@@ -247,7 +270,7 @@ public class TransCopy {
 		 * @param source The source file.
 		 * @param target The target file.
 		 */
-		public VideoOperation(Path source, Path target) {
+		public VideoOperation(@NotNull Path source, @NotNull Path target) {
 			super(source, target);
 			temp = TEMP.resolve(source.getFileName());
 		}
@@ -277,7 +300,7 @@ public class TransCopy {
 		 * @return Whether the process could finish without an interrupt.
 		 * @throws IOException If the source file could not be deleted.
 		 */
-		private boolean await(Process encode) throws IOException {
+		private boolean await(@NotNull Process encode) throws IOException {
 			try {
 				if (encode.waitFor() == 0) {
 					COPY_QUEUE.put(() -> {
