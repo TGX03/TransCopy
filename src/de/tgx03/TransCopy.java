@@ -22,17 +22,17 @@ public class TransCopy {
 	 * The queue for file copy operations.
 	 * Used as parallel copy usually takes longer than serial.
 	 */
-	private static final BlockingQueue<Runnable> COPY_QUEUE = new LinkedBlockingQueue<>();
+	private static final ThreadPoolExecutor COPIER = new ThreadPoolExecutor(0, 1, 30, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
 	/**
 	 * A queue for video encodings.
 	 * Used as parallel encoding usually doesn't make much sense,
 	 * and when using NVENC for example not even possible.
 	 */
-	private static final BlockingQueue<Runnable> VIDEO_QUEUE = new LinkedBlockingQueue<>();
+	private static final ThreadPoolExecutor ENCODER = new ThreadPoolExecutor(0, 1, 30, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
 	/**
 	 * The thread pool used for the threads which traverse the directory.
 	 */
-	private static final ThreadPoolExecutor EXECUTOR = new ThreadPoolExecutor(2, 2 * Runtime.getRuntime().availableProcessors(), 5, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
+	private static final ThreadPoolExecutor TRAVERSER = new ThreadPoolExecutor(2, 2 * Runtime.getRuntime().availableProcessors(), 5, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
 
 	/**
 	 * The source directory to copy the files from.
@@ -46,17 +46,11 @@ public class TransCopy {
 	 * The location of the Handbrake executable.
 	 */
 	private static String handBrake;
-	/**
-	 * Whether the input directory has been completely scanned.
-	 */
-	private static volatile boolean inputDone = false;
-	/**
-	 * Whether all videos have been transcoded.
-	 */
-	private static volatile boolean videoDone = false;
 
 	static {
-		EXECUTOR.setThreadFactory(VirtualDaemonFactory.getINSTANCE());
+		TRAVERSER.setThreadFactory(VirtualThreadFactory.VIRTUAL_DAEMON_FACTORY);
+		COPIER.setThreadFactory(VirtualThreadFactory.VIRTUAL_FACTORY);
+		ENCODER.setThreadFactory(VirtualThreadFactory.VIRTUAL_FACTORY);
 	}
 
 	/**
@@ -65,7 +59,7 @@ public class TransCopy {
 	 *
 	 * @param args First argument is the source, second is the target, third is the Handbrake executable and fourth is the name of the Handbrake preset.
 	 */
-	public static void main(@NotNull String @NotNull [] args) {
+	public static void main(@NotNull String @NotNull [] args) throws InterruptedException {
 		File source = new File(args[0]);
 		sourcePath = source.toPath();
 		targetPath = new File(args[1]).toPath();
@@ -73,37 +67,12 @@ public class TransCopy {
 		VideoOperation.presetName = args[3];
 		Phaser rootPhaser = new Phaser(1);
 
-		Thread copier = Thread.ofVirtual().name("Copier").start(() -> {
-			while (!inputDone || !videoDone) {
-				try {
-					COPY_QUEUE.take().run();
-				} catch (InterruptedException e) {
-					// Probably means done was set
-				}
-			}
-			Runnable operation;
-			while ((operation = COPY_QUEUE.poll()) != null) operation.run();
-		});
-
-		Thread encoder = Thread.ofVirtual().name("Encoder").start(() -> {
-			while (!inputDone) {
-				try {
-					VIDEO_QUEUE.take().run();
-				} catch (InterruptedException e) {
-					// Probably means done was set
-				}
-			}
-			Runnable operation;
-			while ((operation = VIDEO_QUEUE.poll()) != null) operation.run();
-			videoDone = true;
-			copier.interrupt();
-		});
-
 		traverseDirectory(source, rootPhaser);
 		rootPhaser.arriveAndAwaitAdvance();
-		inputDone = true;
-		copier.interrupt();
-		encoder.interrupt();
+		TRAVERSER.shutdown();
+		ENCODER.shutdown();
+		ENCODER.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
+		COPIER.shutdown();
 	}
 
 	/**
@@ -117,7 +86,7 @@ public class TransCopy {
 		parentPhaser.register();
 		Phaser childPhaser = new Phaser(parentPhaser);
 		for (File file : directory.listFiles()) {
-			if (file.isDirectory()) EXECUTOR.execute(() -> traverseDirectory(file, childPhaser));
+			if (file.isDirectory()) TRAVERSER.execute(() -> traverseDirectory(file, childPhaser));
 			else handleFile(file);
 		}
 		parentPhaser.arriveAndDeregister();
@@ -144,21 +113,11 @@ public class TransCopy {
 		switch (mimeType) {
 			case "image" -> {
 				MoveOperation op = new MoveOperation(source, target);
-				if (!op.deleteSourceIfExists()) {
-					try {
-						COPY_QUEUE.put(op);
-					} catch (InterruptedException ignored) {
-					}
-				}
+				if (!op.deleteSourceIfExists()) COPIER.execute(op);
 			}
 			case "video" -> {
 				VideoOperation op = new VideoOperation(source, target);
-				if (!op.deleteSourceIfExists()) {
-					try {
-						VIDEO_QUEUE.put(op);
-					} catch (InterruptedException ignored) {
-					}
-				}
+				if (!op.deleteSourceIfExists()) ENCODER.execute(op);
 			}
 		}
 	}
@@ -301,7 +260,7 @@ public class TransCopy {
 		private boolean await(@NotNull Process encode) throws IOException {
 			try {
 				if (encode.waitFor() == 0) {
-					COPY_QUEUE.put(() -> {
+					COPIER.execute(() -> {
 						try {
 							if (!Files.exists(target.getParent())) {
 								Files.createDirectories(target.getParent());
@@ -309,7 +268,7 @@ public class TransCopy {
 							System.out.println("Copying " + relative);
 							Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING);
 						} catch (IOException e) {
-							e.printStackTrace();
+							throw new RuntimeException(e);
 						}
 					});
 					Files.deleteIfExists(source);
