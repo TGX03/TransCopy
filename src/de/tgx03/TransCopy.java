@@ -9,9 +9,7 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.*;
 
 /**
  * A class intended to copy images and videos from one location to another,
@@ -63,12 +61,13 @@ public class TransCopy {
 	 *
 	 * @param args First argument is the source, second is the target, third is the Handbrake executable and fourth is the name of the Handbrake preset.
 	 */
-	public static void main(@NotNull String @NotNull [] args) throws InterruptedException {
+	public static void main(@NotNull String @NotNull [] args) {
 		File source = new File(args[0]);
 		sourcePath = source.toPath();
 		targetPath = new File(args[1]).toPath();
 		handBrake = args[2];
 		VideoOperation.presetName = args[3];
+		Phaser rootPhaser = new Phaser(1);
 
 		Thread copier = new Thread(() -> {
 			while (!inputDone || !videoDone) {
@@ -98,8 +97,8 @@ public class TransCopy {
 		});
 		encoder.start();
 
-		traverseDirectory(source);
-		COUNTDOWN.await();
+		traverseDirectory(source, rootPhaser);
+		rootPhaser.arriveAndAwaitAdvance();
 		inputDone = true;
 		copier.interrupt();
 		encoder.interrupt();
@@ -109,20 +108,17 @@ public class TransCopy {
 	 * Goes through a directory, recursively creating new jobs for subdirectories and files.
 	 *
 	 * @param directory The current directory to scan.
+	 * @param parentPhaser The phaser to register and afterward deregister to/from.
 	 */
-	private static void traverseDirectory(@NotNull File directory) {
+	private static void traverseDirectory(@NotNull File directory, Phaser parentPhaser) {
 		assert directory.isDirectory();
+		parentPhaser.register();
+		Phaser childPhaser = new Phaser(parentPhaser);
 		for (File file : directory.listFiles()) {
-			COUNTDOWN.countUp();
-			if (file.isDirectory()) ForkJoinPool.commonPool().execute(() -> {
-				traverseDirectory(file);
-				COUNTDOWN.countDown();
-			});
-			else {
-				handleFile(file);
-				COUNTDOWN.countDown();
-			}
+			if (file.isDirectory()) ForkJoinPool.commonPool().execute(() -> traverseDirectory(file, childPhaser));
+			else handleFile(file);
 		}
+		parentPhaser.arriveAndDeregister();
 	}
 
 	/**

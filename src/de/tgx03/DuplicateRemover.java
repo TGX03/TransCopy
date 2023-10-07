@@ -5,6 +5,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.File;
 import java.util.HashMap;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.Phaser;
 
 /**
  * A class which is used to remove files that exist with 2 different file endings, yet are fully identical, in the implemented case here .jpg and .jpeg.
@@ -12,20 +13,15 @@ import java.util.concurrent.ForkJoinPool;
 public class DuplicateRemover {
 
 	/**
-	 * Used to make sure the program exits.
-	 */
-	private static final DynamicLatch latch = new DynamicLatch();
-
-	/**
 	 * Launch the program
 	 *
 	 * @param args First parameter is the directory to clean, rest is ignored.
-	 * @throws InterruptedException I dunno.
 	 */
-	public static void main(String[] args) throws InterruptedException {
+	public static void main(String[] args) {
 		File path = new File(args[0]);
-		traverseDirectory(path);
-		latch.await();
+		Phaser rootPhaser = new Phaser(1);
+		traverseDirectory(path, rootPhaser);
+		rootPhaser.arriveAndAwaitAdvance();
 	}
 
 	/**
@@ -34,15 +30,16 @@ public class DuplicateRemover {
 	 *
 	 * @param path The path to traverse.
 	 */
-	private static void traverseDirectory(@NotNull File path) {
+	private static void traverseDirectory(@NotNull File path, Phaser parentPhaser) {
 		assert path.isDirectory();
-		latch.countUp();
+		parentPhaser.register();
 		HashMap<String, Pair> pairs = new HashMap<>();
+		Phaser subPhaser = new Phaser(parentPhaser);
 		for (File current : path.listFiles()) {
-			if (current.isDirectory()) ForkJoinPool.commonPool().execute(() -> traverseDirectory(current));
+			if (current.isDirectory()) ForkJoinPool.commonPool().execute(() -> traverseDirectory(current, subPhaser));
 			else handleFile(current, pairs);
 		}
-		latch.countDown();
+		parentPhaser.arriveAndDeregister();
 	}
 
 	/**
