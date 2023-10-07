@@ -29,6 +29,9 @@ public class TransCopy {
 	 * and when using NVENC for example not even possible.
 	 */
 	private static final BlockingQueue<Runnable> VIDEO_QUEUE = new LinkedBlockingQueue<>();
+	/**
+	 * The thread pool used for the threads which traverse the directory.
+	 */
 	private static final ThreadPoolExecutor EXECUTOR = new ThreadPoolExecutor(2, 2 * Runtime.getRuntime().availableProcessors(), 5, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
 
 	/**
