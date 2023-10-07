@@ -29,10 +29,7 @@ public class TransCopy {
 	 * and when using NVENC for example not even possible.
 	 */
 	private static final BlockingQueue<Runnable> VIDEO_QUEUE = new LinkedBlockingQueue<>();
-	/**
-	 * The counter making sure all tasks have finished before exiting.
-	 */
-	private static final DynamicLatch COUNTDOWN = new DynamicLatch();
+	private static final ThreadPoolExecutor EXECUTOR = new ThreadPoolExecutor(2, 2 * Runtime.getRuntime().availableProcessors(), 5, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
 
 	/**
 	 * The source directory to copy the files from.
@@ -55,6 +52,10 @@ public class TransCopy {
 	 */
 	private static volatile boolean videoDone = false;
 
+	static {
+		EXECUTOR.setThreadFactory(VirtualThreadFactory.getINSTANCE());
+	}
+
 	/**
 	 * Copies images and videos from one location to another recursively,
 	 * while transcoding videos in the process.
@@ -69,7 +70,7 @@ public class TransCopy {
 		VideoOperation.presetName = args[3];
 		Phaser rootPhaser = new Phaser(1);
 
-		Thread copier = new Thread(() -> {
+		Thread copier = Thread.ofVirtual().name("Copier").start(() -> {
 			while (!inputDone || !videoDone) {
 				try {
 					COPY_QUEUE.take().run();
@@ -80,9 +81,8 @@ public class TransCopy {
 			Runnable operation;
 			while ((operation = COPY_QUEUE.poll()) != null) operation.run();
 		});
-		copier.start();
 
-		Thread encoder = new Thread(() -> {
+		Thread encoder = Thread.ofVirtual().name("Encoder").start(() -> {
 			while (!inputDone) {
 				try {
 					VIDEO_QUEUE.take().run();
@@ -95,7 +95,6 @@ public class TransCopy {
 			videoDone = true;
 			copier.interrupt();
 		});
-		encoder.start();
 
 		traverseDirectory(source, rootPhaser);
 		rootPhaser.arriveAndAwaitAdvance();
@@ -115,7 +114,7 @@ public class TransCopy {
 		parentPhaser.register();
 		Phaser childPhaser = new Phaser(parentPhaser);
 		for (File file : directory.listFiles()) {
-			if (file.isDirectory()) ForkJoinPool.commonPool().execute(() -> traverseDirectory(file, childPhaser));
+			if (file.isDirectory()) EXECUTOR.execute(() -> traverseDirectory(file, childPhaser));
 			else handleFile(file);
 		}
 		parentPhaser.arriveAndDeregister();
