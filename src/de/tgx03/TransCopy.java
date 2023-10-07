@@ -56,7 +56,7 @@ public class TransCopy {
 	private static volatile boolean videoDone = false;
 
 	static {
-		EXECUTOR.setThreadFactory(VirtualThreadFactory.getINSTANCE());
+		EXECUTOR.setThreadFactory(VirtualDaemonFactory.getINSTANCE());
 	}
 
 	/**

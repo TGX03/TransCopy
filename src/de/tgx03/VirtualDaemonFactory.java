@@ -5,31 +5,33 @@ import org.jetbrains.annotations.NotNull;
 import java.util.concurrent.ThreadFactory;
 
 /**
- * A thread factory whose whole purpose is to create default virtual threads.
+ * A thread factory whose whole purpose is to create virtual threads as daemons for ThreadPools.
  * To state the obvious, the threads get created in an unstarted state.
  */
-class VirtualThreadFactory implements ThreadFactory {
+public class VirtualDaemonFactory implements ThreadFactory {
 
 	/**
 	 * The instance of this factory.
 	 */
-	private static final VirtualThreadFactory INSTANCE = new VirtualThreadFactory();
+	private static final VirtualDaemonFactory INSTANCE = new VirtualDaemonFactory();
 
 	/**
 	 * Singleton and stuff.
 	 */
-	private VirtualThreadFactory() {}
+	private VirtualDaemonFactory() {}
 
 	/**
 	 * Returns the singleton instance of this factory.
 	 * @return The instance of this factory.
 	 */
-	public static VirtualThreadFactory getINSTANCE() {
+	public static VirtualDaemonFactory getINSTANCE() {
 		return INSTANCE;
 	}
 
 	@Override
 	public Thread newThread(@NotNull Runnable r) {
-		return Thread.ofVirtual().unstarted(r);
+		Thread thread = Thread.ofVirtual().unstarted(r);
+		thread.setDaemon(true);
+		return thread;
 	}
 }
