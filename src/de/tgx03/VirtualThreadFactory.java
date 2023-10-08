@@ -9,15 +9,6 @@ import java.util.concurrent.ThreadFactory;
 public final class VirtualThreadFactory {
 
 	/**
-	 * A thread factory that creates virtual threads which run as a daemon.
-	 */
-	public static final ThreadFactory VIRTUAL_DAEMON_FACTORY = r -> {
-		Thread thread = Thread.ofVirtual().unstarted(r);
-		thread.setDaemon(true);
-		return thread;
-	};
-
-	/**
 	 * A thread factory that creates virtual threads.
 	 */
 	public static final ThreadFactory VIRTUAL_FACTORY = r -> Thread.ofVirtual().unstarted(r);
