@@ -203,9 +203,10 @@ public class TransCopy {
 		}
 
 		/**
-		 * Gets the height of the already existing target video file.
+		 * Gets the dimensions of the already existing target video file.
+		 * First int is width, second is height.
 		 *
-		 * @return The height of the video.
+		 * @return The dimensions of the video.
 		 * @throws IOException If the file couldn't be read.
 		 */
 		private int[] getTargetDimensions() throws IOException {
