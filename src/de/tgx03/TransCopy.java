@@ -48,7 +48,7 @@ public class TransCopy {
 	private static String handBrake;
 
 	static {
-		TRAVERSER.setThreadFactory(VirtualThreadFactory.VIRTUAL_DAEMON_FACTORY);
+		TRAVERSER.setThreadFactory(VirtualThreadFactory.VIRTUAL_FACTORY);
 		COPIER.setThreadFactory(VirtualThreadFactory.VIRTUAL_FACTORY);
 		ENCODER.setThreadFactory(VirtualThreadFactory.VIRTUAL_FACTORY);
 	}
