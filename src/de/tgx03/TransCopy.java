@@ -1,6 +1,8 @@
 package de.tgx03;
 
 import org.jetbrains.annotations.NotNull;
+import org.mp4parser.IsoFile;
+import org.mp4parser.boxes.sampleentry.VisualSampleEntry;
 
 import java.io.File;
 import java.io.IOException;
@@ -9,7 +11,11 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.concurrent.*;
+import java.util.Optional;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Phaser;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A class intended to copy images and videos from one location to another,
@@ -78,7 +84,7 @@ public class TransCopy {
 	/**
 	 * Goes through a directory, recursively creating new jobs for subdirectories and files.
 	 *
-	 * @param directory The current directory to scan.
+	 * @param directory    The current directory to scan.
 	 * @param parentPhaser The phaser to register and afterward deregister to/from.
 	 */
 	private static void traverseDirectory(@NotNull File directory, Phaser parentPhaser) {
@@ -160,14 +166,46 @@ public class TransCopy {
 		public boolean deleteSourceIfExists() {
 			try {
 				if (Files.exists(target)) {
-					System.out.println("Deleting " + relative);
-					Files.delete(source);
-					return true;
+					Optional<String> ending = getExtensionByStringHandling(source.getFileName().toString());
+					if (ending.isPresent() && (ending.get().equals("mp4") || ending.get().equals("m4v")) && getTargetHeight() == 1080) {    // This is just some shit because I didn't notice Handbrake now mangles up horizontal videos.
+						System.out.println("Renewing " + relative);
+						Files.delete(target);
+						return false;
+					} else {
+						System.out.println("Deleting " + relative);
+						Files.delete(source);
+						return true;
+					}
 				}
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 			return false;
+		}
+
+		/**
+		 * Returns the file ending of a given file.
+		 *
+		 * @param filename The file.
+		 * @return The ending of the given file, if it exists.
+		 */
+		private static Optional<String> getExtensionByStringHandling(String filename) {
+			return Optional.ofNullable(filename)
+					.filter(f -> f.contains("."))
+					.map(f -> f.substring(filename.lastIndexOf(".") + 1));
+		}
+
+		/**
+		 * Gets the height of the already existing target video file.
+		 *
+		 * @return The height of the video.
+		 * @throws IOException If the file couldn't be read.
+		 */
+		private int getTargetHeight() throws IOException {
+			try (IsoFile file = new IsoFile(target.toFile())) {
+				VisualSampleEntry entry = file.getBoxes(VisualSampleEntry.class).get(0);
+				return entry.getHeight();
+			}
 		}
 	}
 
