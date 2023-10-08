@@ -167,10 +167,17 @@ public class TransCopy {
 			try {
 				if (Files.exists(target)) {
 					Optional<String> ending = getExtensionByStringHandling(source.getFileName().toString());
-					if (ending.isPresent() && (ending.get().equals("mp4") || ending.get().equals("m4v")) && getTargetHeight() == 1080) {    // This is just some shit because I didn't notice Handbrake now mangles up horizontal videos.
-						System.out.println("Renewing " + relative);
-						Files.delete(target);
-						return false;
+					if (ending.isPresent() && (ending.get().equals("mp4") || ending.get().equals("m4v"))) {    // This is just some shit because I didn't notice Handbrake now mangles up horizontal videos.
+						int[] dimensions = getTargetDimensions();
+						if (dimensions[1] == 1080 && dimensions[0] != 1920) {
+							System.out.println("Renewing " + relative);
+							Files.delete(target);
+							return false;
+						} else {
+							System.out.println("Deleting " + relative);
+							Files.delete(source);
+							return true;
+						}
 					} else {
 						System.out.println("Deleting " + relative);
 						Files.delete(source);
@@ -201,10 +208,10 @@ public class TransCopy {
 		 * @return The height of the video.
 		 * @throws IOException If the file couldn't be read.
 		 */
-		private int getTargetHeight() throws IOException {
+		private int[] getTargetDimensions() throws IOException {
 			try (IsoFile file = new IsoFile(target.toFile())) {
 				VisualSampleEntry entry = file.getBoxes(VisualSampleEntry.class).get(0);
-				return entry.getHeight();
+				return new int[]{entry.getWidth(), entry.getHeight()};
 			}
 		}
 	}
