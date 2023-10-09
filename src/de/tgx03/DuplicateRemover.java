@@ -113,8 +113,8 @@ public class DuplicateRemover {
 		 */
 		private void checkDuplicate() {
 			if (jpg != null && jpeg != null) {
-				if (jpeg.delete()) System.out.println("Deleted " + jpeg.toString());
-				else System.err.println("Couldn't delete " + jpeg.toString());
+				if (jpg.delete()) System.out.println("Deleted " + jpg.toString());
+				else System.err.println("Couldn't delete " + jpg.toString());
 			}
 		}
 	}
