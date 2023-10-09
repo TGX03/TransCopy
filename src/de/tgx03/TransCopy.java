@@ -11,7 +11,6 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Phaser;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -165,54 +164,28 @@ public class TransCopy {
 		 */
 		public boolean deleteSourceIfExists() {
 			try {
+				checkJPG();
 				if (Files.exists(target)) {
-					Optional<String> ending = getExtensionByStringHandling(source.getFileName().toString());
-					if (ending.isPresent() && (ending.get().equals("mp4") || ending.get().equals("m4v"))) {    // This is just some shit because I didn't notice Handbrake now mangles up horizontal videos.
-						int[] dimensions = getTargetDimensions();
-						if (dimensions[1] == 1080 && dimensions[0] != 1920) {
-							System.out.println("Renewing " + relative);
-							Files.delete(target);
-							return false;
-						} else {
-							System.out.println("Deleting " + relative);
-							Files.delete(source);
-							return true;
-						}
-					} else {
-						System.out.println("Deleting " + relative);
-						Files.delete(source);
-						return true;
-					}
+					System.out.println("Deleting " + relative);
+					Files.delete(source);
+					return true;
 				}
 			} catch (IOException e) {
-				e.printStackTrace();
+				throw new RuntimeException(e);
 			}
 			return false;
 		}
 
 		/**
-		 * Returns the file ending of a given file.
-		 *
-		 * @param filename The file.
-		 * @return The ending of the given file, if it exists.
+		 * Check whether a file with same name but jpg extension instead of jpeg exists to prevent duplicates.
 		 */
-		private static Optional<String> getExtensionByStringHandling(String filename) {
-			return Optional.ofNullable(filename)
-					.filter(f -> f.contains("."))
-					.map(f -> f.substring(filename.lastIndexOf(".") + 1));
-		}
-
-		/**
-		 * Gets the dimensions of the already existing target video file.
-		 * First int is width, second is height.
-		 *
-		 * @return The dimensions of the video.
-		 * @throws IOException If the file couldn't be read.
-		 */
-		private int[] getTargetDimensions() throws IOException {
-			try (IsoFile file = new IsoFile(target.toFile())) {
-				VisualSampleEntry entry = file.getBoxes(VisualSampleEntry.class, true).get(0);
-				return new int[]{entry.getWidth(), entry.getHeight()};
+		private void checkJPG() throws IOException {
+			String name = target.getFileName().toString();
+			String replaced = name.replace(".jpeg", ".jpg");
+			Path potentialDuplicate = target.getParent().resolve(replaced);
+			if (potentialDuplicate.toFile().exists()) {
+				System.out.println("Deleting " + targetPath.relativize(potentialDuplicate));
+				Files.delete(potentialDuplicate);
 			}
 		}
 	}
@@ -293,6 +266,40 @@ public class TransCopy {
 				} while (!successful);
 			} catch (IOException e) {
 				e.printStackTrace();
+			}
+		}
+
+		@Override
+		public boolean deleteSourceIfExists() {
+			if (Files.exists(target)) {
+				try {
+					int[] dimensions = getTargetDimensions();
+					if (dimensions[1] == 1080 && dimensions[0] != 1920) {
+						System.out.println("Renewing " + relative);
+						Files.delete(target);
+						return false;
+					} else {
+						System.out.println("Deleting " + relative);
+						Files.delete(source);
+						return true;
+					}
+				} catch (IOException e) {
+					throw new RuntimeException(e);
+				}
+			} else return false;
+		}
+
+		/**
+		 * Gets the dimensions of the already existing target video file.
+		 * First int is width, second is height.
+		 *
+		 * @return The dimensions of the video.
+		 * @throws IOException If the file couldn't be read.
+		 */
+		private int[] getTargetDimensions() throws IOException {
+			try (IsoFile file = new IsoFile(target.toFile())) {
+				VisualSampleEntry entry = file.getBoxes(VisualSampleEntry.class, true).get(0);
+				return new int[]{entry.getWidth(), entry.getHeight()};
 			}
 		}
 
