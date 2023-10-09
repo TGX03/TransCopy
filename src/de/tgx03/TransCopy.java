@@ -211,7 +211,7 @@ public class TransCopy {
 		 */
 		private int[] getTargetDimensions() throws IOException {
 			try (IsoFile file = new IsoFile(target.toFile())) {
-				VisualSampleEntry entry = file.getBoxes(VisualSampleEntry.class).get(0);
+				VisualSampleEntry entry = file.getBoxes(VisualSampleEntry.class, true).get(0);
 				return new int[]{entry.getWidth(), entry.getHeight()};
 			}
 		}
