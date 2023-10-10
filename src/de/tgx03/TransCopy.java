@@ -70,7 +70,7 @@ public class TransCopy {
 		targetPath = new File(args[1]).toPath();
 		handBrake = args[2];
 		VideoOperation.presetName = args[3];
-		Phaser rootPhaser = new Phaser(1);
+		Phaser rootPhaser = new Phaser(2);
 
 		traverseDirectory(source, rootPhaser);
 		rootPhaser.arriveAndAwaitAdvance();
@@ -87,12 +87,13 @@ public class TransCopy {
 	 * @param parentPhaser The phaser to register and afterward deregister to/from.
 	 */
 	private static void traverseDirectory(@NotNull File directory, Phaser parentPhaser) {
-		parentPhaser.register();
 		assert directory.isDirectory();
 		Phaser childPhaser = new Phaser(parentPhaser);
 		for (File file : directory.listFiles()) {
-			if (file.isDirectory()) TRAVERSER.execute(() -> traverseDirectory(file, childPhaser));
-			else handleFile(file);
+			if (file.isDirectory()) {
+				childPhaser.register();
+				TRAVERSER.execute(() -> traverseDirectory(file, childPhaser));
+			} else handleFile(file);
 		}
 		parentPhaser.arriveAndDeregister();
 	}
