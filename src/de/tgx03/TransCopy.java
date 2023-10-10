@@ -86,7 +86,7 @@ public class TransCopy {
 	 * @param directory    The current directory to scan.
 	 * @param parentPhaser The phaser to register and afterward deregister to/from.
 	 */
-	private static void traverseDirectory(@NotNull File directory, Phaser parentPhaser) {
+	private static void traverseDirectory(@NotNull File directory, @NotNull Phaser parentPhaser) {
 		assert directory.isDirectory();
 		Phaser childPhaser = new Phaser(parentPhaser);
 		for (File file : directory.listFiles()) {
