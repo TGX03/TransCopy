@@ -96,9 +96,8 @@ public class TransCopy {
 					TRAVERSER.execute(() -> traverseDirectory(file, childPhaser));
 				} else handleFile(file);
 			}
-		} catch (Throwable t) {
+		} finally {
 			parentPhaser.arriveAndDeregister();
-			throw t;
 		}
 	}
 
