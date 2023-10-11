@@ -87,15 +87,19 @@ public class TransCopy {
 	 * @param parentPhaser The phaser to register and afterward deregister to/from.
 	 */
 	private static void traverseDirectory(@NotNull File directory, @NotNull Phaser parentPhaser) {
-		assert directory.isDirectory();
-		Phaser childPhaser = new Phaser(parentPhaser);
-		for (File file : directory.listFiles()) {
-			if (file.isDirectory()) {
-				childPhaser.register();
-				TRAVERSER.execute(() -> traverseDirectory(file, childPhaser));
-			} else handleFile(file);
+		try {
+			assert directory.isDirectory();
+			Phaser childPhaser = new Phaser(parentPhaser);
+			for (File file : directory.listFiles()) {
+				if (file.isDirectory()) {
+					childPhaser.register();
+					TRAVERSER.execute(() -> traverseDirectory(file, childPhaser));
+				} else handleFile(file);
+			}
+		} catch (Throwable t) {
+			parentPhaser.arriveAndDeregister();
+			throw t;
 		}
-		parentPhaser.arriveAndDeregister();
 	}
 
 	/**
