@@ -1,5 +1,6 @@
 package de.tgx03;
 
+import me.tongfei.progressbar.ProgressBar;
 import org.jetbrains.annotations.NotNull;
 import org.mp4parser.IsoFile;
 import org.mp4parser.boxes.sampleentry.VisualSampleEntry;
@@ -15,6 +16,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Phaser;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.LongAdder;
 
 /**
  * A class intended to copy images and videos from one location to another,
@@ -73,6 +75,9 @@ public class TransCopy {
 		Phaser rootPhaser = new Phaser(2);
 
 		traverseDirectory(source, rootPhaser);
+		Thread progressBar = new Thread(TransCopy::drawProgressBar, "ProgressBar");
+		progressBar.setDaemon(true);
+		progressBar.start();
 		rootPhaser.arriveAndAwaitAdvance();
 		TRAVERSER.shutdown();
 		ENCODER.shutdown();
@@ -97,7 +102,7 @@ public class TransCopy {
 				} else handleFile(file);
 			}
 		} finally {
-			parentPhaser.arriveAndDeregister();
+			parentPhaser.arrive();
 		}
 	}
 
@@ -128,6 +133,27 @@ public class TransCopy {
 				VideoOperation op = new VideoOperation(source, target);
 				if (!op.deleteSourceIfExists()) ENCODER.execute(op);
 			}
+		}
+	}
+
+	/**
+	 * Creates a progress bar on System.out
+	 * For this it gets the completed tasks from each thread-pool and divides it by the total
+	 * task count of all thread-pools.
+	 * The task count doesn't seem to be the most stable method, so it varies a bit.
+	 */
+	private static void drawProgressBar() {
+		ProgressBar bar = new ProgressBar("Progress", 1);
+		ProgressBar.wrap(System.out, "Progress");
+		while (true) {
+			long totalTasks = COPIER.getTaskCount() + TRAVERSER.getTaskCount() + ENCODER.getTaskCount();
+			long completed = COPIER.getCompletedTaskCount() + TRAVERSER.getTaskCount() + ENCODER.getCompletedTaskCount();
+			bar.maxHint(totalTasks);
+			bar.stepTo(completed);
+			bar.refresh();
+			try {
+				Thread.sleep(500);
+			} catch (InterruptedException ignored) {}
 		}
 	}
 
