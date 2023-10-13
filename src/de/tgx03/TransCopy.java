@@ -146,8 +146,10 @@ public class TransCopy {
 		ProgressBar bar = new ProgressBar("Progress", 1);
 		ProgressBar.wrap(System.out, "Progress");
 		while (true) {
-			long totalTasks = COPIER.getTaskCount() + TRAVERSER.getTaskCount() + ENCODER.getTaskCount();
-			long completed = COPIER.getCompletedTaskCount() + TRAVERSER.getTaskCount() + ENCODER.getCompletedTaskCount();
+			long encoderCompleted = ENCODER.getCompletedTaskCount();
+			long encoderTotal = ENCODER.getTaskCount();
+			long totalTasks = COPIER.getTaskCount() + TRAVERSER.getTaskCount() + 2 * encoderTotal - encoderCompleted;   // Encoded tasks that haven't been completed get counted twice, as they will later also advance to the copy queue.
+			long completed = COPIER.getCompletedTaskCount() + TRAVERSER.getCompletedTaskCount() + encoderCompleted;
 			bar.maxHint(totalTasks);
 			bar.stepTo(completed);
 			bar.refresh();
