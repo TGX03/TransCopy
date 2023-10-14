@@ -83,6 +83,7 @@ public class TransCopy {
 		ENCODER.shutdown();
 		ENCODER.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
 		COPIER.shutdown();
+		COPIER.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
 	}
 
 	/**
