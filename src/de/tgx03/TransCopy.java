@@ -16,7 +16,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Phaser;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.LongAdder;
 
 /**
  * A class intended to copy images and videos from one location to another,
@@ -144,7 +143,7 @@ public class TransCopy {
 	 * The task count doesn't seem to be the most stable method, so it varies a bit.
 	 */
 	private static void drawProgressBar() {
-		ProgressBar bar = new ProgressBar("Progress", 1);
+		try(ProgressBar bar = new ProgressBar("Progress", 1)) {
 		ProgressBar.wrap(System.out, "Progress");
 		while (true) {
 			long encoderCompleted = ENCODER.getCompletedTaskCount();
@@ -156,7 +155,9 @@ public class TransCopy {
 			bar.refresh();
 			try {
 				Thread.sleep(500);
-			} catch (InterruptedException ignored) {}
+			} catch (InterruptedException ignored) {
+			}
+		}
 		}
 	}
 
