@@ -272,9 +272,8 @@ public class TransCopy {
 				}
 				System.out.println("Copying " + relative);
 				Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
-			} catch (FileAlreadyExistsException ignored) {
 			} catch (IOException e) {
-				e.printStackTrace();
+				throw new RuntimeException(e);
 			}
 		}
 	}
@@ -324,7 +323,7 @@ public class TransCopy {
 					successful = await(encode);
 				} while (!successful);
 			} catch (IOException e) {
-				e.printStackTrace();
+				throw new RuntimeException(e);
 			}
 		}
 

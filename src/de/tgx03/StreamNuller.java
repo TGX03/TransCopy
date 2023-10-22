@@ -43,7 +43,7 @@ public class StreamNuller extends Thread {
 		try {
 			while (reader.read(buffer) != -1) ;
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw new RuntimeException(e);
 		}
 	}
 }
