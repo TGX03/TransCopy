@@ -8,7 +8,6 @@ import org.mp4parser.boxes.sampleentry.VisualSampleEntry;
 import java.io.File;
 import java.io.IOException;
 import java.net.URLConnection;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -192,6 +191,20 @@ public class TransCopy {
 		}
 
 		/**
+		 * Creates a new Operation to move on file between two locations.
+		 * Also allows for explicit specification of the relative path.
+		 *
+		 * @param source The source path.
+		 * @param target The target path.
+		 * @param relative The relative path.
+		 */
+		protected Operation(@NotNull Path source, @NotNull Path target, @NotNull Path relative) {
+			this.source = source;
+			this.target = target;
+			this.relative = relative;
+		}
+
+		/**
 		 * Checks if the target already exists and then deletes the source.
 		 *
 		 * @return Whether the target already exists.
@@ -237,6 +250,18 @@ public class TransCopy {
 		 */
 		public MoveOperation(@NotNull Path source, @NotNull Path target) {
 			super(source, target);
+		}
+
+		/**
+		 * Creates a new operation to move a file from one location to another.
+		 * Also allows for explicit specification of the relative path.
+		 *
+		 * @param source The source file.
+		 * @param target The target file.
+		 * @param relative The relative path of the file.
+		 */
+		protected MoveOperation(@NotNull Path source, @NotNull Path target, @NotNull Path relative) {
+			super(source, target, relative);
 		}
 
 		@Override
@@ -342,23 +367,12 @@ public class TransCopy {
 		 *
 		 * @param encode The process to wait for.
 		 * @return Whether the process could finish without an interrupt.
-		 * @throws IOException If the source file could not be deleted.
 		 */
-		private boolean await(@NotNull Process encode) throws IOException {
+		private boolean await(@NotNull Process encode) {
 			try {
 				if (encode.waitFor() == 0) {
-					COPIER.execute(() -> {
-						try {
-							if (!Files.exists(target.getParent())) {
-								Files.createDirectories(target.getParent());
-							}
-							System.out.println("Copying " + relative);
-							Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING);
-						} catch (IOException e) {
-							throw new RuntimeException(e);
-						}
-					});
-					Files.deleteIfExists(source);
+					MoveOperation operation = new MoveOperation(this.temp, this.target, this.relative);
+					COPIER.execute(operation);
 				} else System.err.println(sourcePath.relativize(source) + " failed to encode");
 				return true;
 			} catch (InterruptedException e) {
