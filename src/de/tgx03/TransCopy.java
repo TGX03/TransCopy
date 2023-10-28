@@ -322,6 +322,8 @@ public class TransCopy {
 				{    // This loop is required as when the interrupt to recheck whether the input is done comes at the wrong time, the final encodings will be aborted.
 					successful = await(encode);
 				} while (!successful);
+				COPIER.execute(new MoveOperation(this.temp, this.target, this.relative));
+				Files.delete(this.source);
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}
@@ -366,14 +368,12 @@ public class TransCopy {
 		 *
 		 * @param encode The process to wait for.
 		 * @return Whether the process could finish without an interrupt.
+		 * @throws IOException Gets thrown in case the file could not be encoded.
 		 */
-		private boolean await(@NotNull Process encode) {
+		private boolean await(@NotNull Process encode) throws IOException {
 			try {
-				if (encode.waitFor() == 0) {
-					MoveOperation operation = new MoveOperation(this.temp, this.target, this.relative);
-					COPIER.execute(operation);
-				} else System.err.println(sourcePath.relativize(source) + " failed to encode");
-				return true;
+				if (encode.waitFor() == 0) return true;
+				else throw new IOException("Encoding failed for " + relative.toString());
 			} catch (InterruptedException e) {
 				return false;
 			}
