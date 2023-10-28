@@ -12,7 +12,10 @@ import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.concurrent.*;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Phaser;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A class intended to copy images and videos from one location to another,
@@ -140,21 +143,21 @@ public class TransCopy {
 	 * The task count doesn't seem to be the most stable method, so it varies a bit.
 	 */
 	private static void drawProgressBar() {
-		try(ProgressBar bar = new ProgressBar("Progress", 1)) {
-		ProgressBar.wrap(System.out, "Progress");
-		while (true) {
-			long encoderCompleted = ENCODER.getCompletedTaskCount();
-			long encoderTotal = ENCODER.getTaskCount();
-			long totalTasks = COPIER.getTaskCount() + TRAVERSER.getTaskCount() + 2 * encoderTotal - encoderCompleted;   // Encoded tasks that haven't been completed get counted twice, as they will later also advance to the copy queue.
-			long completed = COPIER.getCompletedTaskCount() + TRAVERSER.getCompletedTaskCount() + encoderCompleted;
-			bar.maxHint(totalTasks);
-			bar.stepTo(completed);
-			bar.refresh();
-			try {
-				Thread.sleep(500);
-			} catch (InterruptedException ignored) {
+		try (ProgressBar bar = new ProgressBar("Progress", 1)) {
+			ProgressBar.wrap(System.out, "Progress");
+			while (true) {
+				long encoderCompleted = ENCODER.getCompletedTaskCount();
+				long encoderTotal = ENCODER.getTaskCount();
+				long totalTasks = COPIER.getTaskCount() + TRAVERSER.getTaskCount() + 2 * encoderTotal - encoderCompleted;   // Encoded tasks that haven't been completed get counted twice, as they will later also advance to the copy queue.
+				long completed = COPIER.getCompletedTaskCount() + TRAVERSER.getCompletedTaskCount() + encoderCompleted;
+				bar.maxHint(totalTasks);
+				bar.stepTo(completed);
+				bar.refresh();
+				try {
+					Thread.sleep(500);
+				} catch (InterruptedException ignored) {
+				}
 			}
-		}
 		}
 	}
 
@@ -192,8 +195,8 @@ public class TransCopy {
 		 * Creates a new Operation to move on file between two locations.
 		 * Also allows for explicit specification of the relative path.
 		 *
-		 * @param source The source path.
-		 * @param target The target path.
+		 * @param source   The source path.
+		 * @param target   The target path.
 		 * @param relative The relative path.
 		 */
 		protected Operation(@NotNull Path source, @NotNull Path target, @NotNull Path relative) {
@@ -254,8 +257,8 @@ public class TransCopy {
 		 * Creates a new operation to move a file from one location to another.
 		 * Also allows for explicit specification of the relative path.
 		 *
-		 * @param source The source file.
-		 * @param target The target file.
+		 * @param source   The source file.
+		 * @param target   The target file.
 		 * @param relative The relative path of the file.
 		 */
 		protected MoveOperation(@NotNull Path source, @NotNull Path target, @NotNull Path relative) {
