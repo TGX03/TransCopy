@@ -7,14 +7,12 @@ import org.mp4parser.boxes.sampleentry.VisualSampleEntry;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.Phaser;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /**
  * A class intended to copy images and videos from one location to another,
@@ -218,7 +216,7 @@ public class TransCopy {
 					return true;
 				}
 			} catch (IOException e) {
-				throw new RuntimeException(e);
+				throw new UncheckedIOException(e);
 			}
 			return false;
 		}
@@ -273,7 +271,7 @@ public class TransCopy {
 				System.out.println("Copying " + relative);
 				Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
 			} catch (IOException e) {
-				throw new RuntimeException(e);
+				throw new UncheckedIOException(e);
 			}
 		}
 	}
@@ -325,7 +323,7 @@ public class TransCopy {
 				COPIER.execute(new MoveOperation(this.temp, this.target, this.relative));
 				Files.delete(this.source);
 			} catch (IOException e) {
-				throw new RuntimeException(e);
+				throw new UncheckedIOException(e);
 			}
 		}
 
@@ -344,7 +342,7 @@ public class TransCopy {
 						return true;
 					}
 				} catch (IOException e) {
-					throw new RuntimeException(e);
+					throw new UncheckedIOException(e);
 				}
 			} else return false;
 		}

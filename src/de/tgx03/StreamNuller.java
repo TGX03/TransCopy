@@ -3,6 +3,7 @@ package de.tgx03;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.UncheckedIOException;
 
 /**
  * A class used to empty a string in a separate thread without actually doing something with the output
@@ -43,7 +44,7 @@ public class StreamNuller extends Thread {
 		try {
 			while (reader.read(buffer) != -1) ;
 		} catch (IOException e) {
-			throw new RuntimeException(e);
+			throw new UncheckedIOException(e);
 		}
 	}
 }
