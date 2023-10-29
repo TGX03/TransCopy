@@ -37,7 +37,13 @@ public class TransCopy {
 	 * The thread pool used for the threads which traverse the directory.
 	 */
 	private static final ExecutorService TRAVERSER = Executors.newCachedThreadPool(r -> Thread.ofVirtual().unstarted(r));
+	/**
+	 * Counter for how many tasks exist in total.
+	 */
 	private static final LongAdder TASK_COUNT = new LongAdder();
+	/**
+	 * Counter for how many tasks are completed.
+	 */
 	private static final LongAdder TASK_COMPLETED = new LongAdder();
 
 	/**
