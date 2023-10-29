@@ -26,17 +26,17 @@ public class TransCopy {
 	 * The queue for file copy operations.
 	 * Used as parallel copy usually takes longer than serial.
 	 */
-	private static final ExecutorService COPIER = new SingleThreadFuturePriorityExecutorService(VirtualThreadFactory.VIRTUAL_FACTORY);
+	private static final ExecutorService COPIER = new SingleThreadFuturePriorityExecutorService(r -> Thread.ofVirtual().unstarted(r));
 	/**
 	 * A queue for video encodings.
 	 * Used as parallel encoding usually doesn't make much sense,
 	 * and when using NVENC for example not even possible.
 	 */
-	private static final ExecutorService ENCODER = Executors.newSingleThreadExecutor(VirtualThreadFactory.VIRTUAL_FACTORY);
+	private static final ExecutorService ENCODER = Executors.newSingleThreadExecutor(r -> Thread.ofVirtual().unstarted(r));
 	/**
 	 * The thread pool used for the threads which traverse the directory.
 	 */
-	private static final ExecutorService TRAVERSER = Executors.newCachedThreadPool(VirtualThreadFactory.VIRTUAL_FACTORY);
+	private static final ExecutorService TRAVERSER = Executors.newCachedThreadPool(r -> Thread.ofVirtual().unstarted(r));
 	private static final LongAdder TASK_COUNT = new LongAdder();
 	private static final LongAdder TASK_COMPLETED = new LongAdder();
 
