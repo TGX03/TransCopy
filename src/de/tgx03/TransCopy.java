@@ -12,10 +12,8 @@ import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.Phaser;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.LongAdder;
 
 /**
  * A class intended to copy images and videos from one location to another,
@@ -28,17 +26,19 @@ public class TransCopy {
 	 * The queue for file copy operations.
 	 * Used as parallel copy usually takes longer than serial.
 	 */
-	private static final ThreadPoolExecutor COPIER = new ThreadPoolExecutor(0, 1, 30, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
+	private static final ExecutorService COPIER = new SingleThreadFuturePriorityExecutorService(VirtualThreadFactory.VIRTUAL_FACTORY);
 	/**
 	 * A queue for video encodings.
 	 * Used as parallel encoding usually doesn't make much sense,
 	 * and when using NVENC for example not even possible.
 	 */
-	private static final ThreadPoolExecutor ENCODER = new ThreadPoolExecutor(0, 1, 30, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
+	private static final ExecutorService ENCODER = Executors.newSingleThreadExecutor(VirtualThreadFactory.VIRTUAL_FACTORY);
 	/**
 	 * The thread pool used for the threads which traverse the directory.
 	 */
-	private static final ThreadPoolExecutor TRAVERSER = new ThreadPoolExecutor(2, 2 * Runtime.getRuntime().availableProcessors(), 5, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
+	private static final ExecutorService TRAVERSER = Executors.newCachedThreadPool(VirtualThreadFactory.VIRTUAL_FACTORY);
+	private static final LongAdder TASK_COUNT = new LongAdder();
+	private static final LongAdder TASK_COMPLETED = new LongAdder();
 
 	/**
 	 * The source directory to copy the files from.
@@ -52,12 +52,6 @@ public class TransCopy {
 	 * The location of the Handbrake executable.
 	 */
 	private static String handBrake;
-
-	static {
-		TRAVERSER.setThreadFactory(VirtualThreadFactory.VIRTUAL_FACTORY);
-		COPIER.setThreadFactory(VirtualThreadFactory.VIRTUAL_FACTORY);
-		ENCODER.setThreadFactory(VirtualThreadFactory.VIRTUAL_FACTORY);
-	}
 
 	/**
 	 * Copies images and videos from one location to another recursively,
@@ -98,11 +92,13 @@ public class TransCopy {
 			for (File file : directory.listFiles()) {
 				if (file.isDirectory()) {
 					childPhaser.register();
+					TASK_COUNT.increment();
 					TRAVERSER.execute(() -> traverseDirectory(file, childPhaser));
 				} else handleFile(file);
 			}
 		} finally {
 			parentPhaser.arrive();
+			TASK_COMPLETED.increment();
 		}
 	}
 
@@ -113,6 +109,7 @@ public class TransCopy {
 	 */
 	private static void handleFile(@NotNull File file) {
 		assert !file.isDirectory();
+		TASK_COUNT.increment();
 
 		// Determine the type of file.
 		String mimeType = URLConnection.guessContentTypeFromName(file.getName());
@@ -130,6 +127,7 @@ public class TransCopy {
 				if (!op.deleteSourceIfExists()) COPIER.execute(op);
 			}
 			case "video" -> {
+				TASK_COUNT.increment();
 				VideoOperation op = new VideoOperation(source, target);
 				if (!op.deleteSourceIfExists()) ENCODER.execute(op);
 			}
@@ -146,12 +144,8 @@ public class TransCopy {
 		try (ProgressBar bar = new ProgressBar("Progress", 1)) {
 			ProgressBar.wrap(System.out, "Progress");
 			while (true) {
-				long encoderCompleted = ENCODER.getCompletedTaskCount();
-				long encoderTotal = ENCODER.getTaskCount();
-				long totalTasks = COPIER.getTaskCount() + TRAVERSER.getTaskCount() + 2 * encoderTotal - encoderCompleted;   // Encoded tasks that haven't been completed get counted twice, as they will later also advance to the copy queue.
-				long completed = COPIER.getCompletedTaskCount() + TRAVERSER.getCompletedTaskCount() + encoderCompleted;
-				bar.maxHint(totalTasks);
-				bar.stepTo(completed);
+				bar.maxHint(TASK_COUNT.sum());
+				bar.stepTo(TASK_COMPLETED.sum());
 				bar.refresh();
 				try {
 					Thread.sleep(500);
@@ -275,6 +269,8 @@ public class TransCopy {
 				Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
 			} catch (IOException e) {
 				throw new UncheckedIOException(e);
+			} finally {
+				TASK_COMPLETED.increment();
 			}
 		}
 	}
@@ -327,6 +323,8 @@ public class TransCopy {
 				Files.delete(this.source);
 			} catch (IOException e) {
 				throw new UncheckedIOException(e);
+			} finally {
+				TASK_COMPLETED.increment();
 			}
 		}
 
@@ -334,11 +332,10 @@ public class TransCopy {
 		public boolean deleteSourceIfExists() {
 			if (Files.exists(target)) {
 				try {
-					int[] dimensions = getTargetDimensions();
+					int[] dimensions = COPIER.submit(new DimensionCalculator()).get();
 					if (dimensions[1] == 1080 && dimensions[0] != 1920) {
 						System.out.println("Renewing " + relative);
 						Files.delete(target);
-						return false;
 					} else {
 						System.out.println("Deleting " + relative);
 						Files.delete(source);
@@ -346,22 +343,12 @@ public class TransCopy {
 					}
 				} catch (IOException e) {
 					throw new UncheckedIOException(e);
+				} catch (InterruptedException ignored) {
+				} catch (ExecutionException e) {
+					throw new RuntimeException(e);
 				}
-			} else return false;
-		}
-
-		/**
-		 * Gets the dimensions of the already existing target video file.
-		 * First int is width, second is height.
-		 *
-		 * @return The dimensions of the video.
-		 * @throws IOException If the file couldn't be read.
-		 */
-		private int[] getTargetDimensions() throws IOException {
-			try (IsoFile file = new IsoFile(target.toFile())) {
-				VisualSampleEntry entry = file.getBoxes(VisualSampleEntry.class, true).get(0);
-				return new int[]{entry.getWidth(), entry.getHeight()};
 			}
+			return false;
 		}
 
 		/**
@@ -377,6 +364,20 @@ public class TransCopy {
 				else throw new IOException("Encoding failed for " + relative.toString());
 			} catch (InterruptedException e) {
 				return false;
+			}
+		}
+
+		/**
+		 * The callable used to get the size of the video.
+		 */
+		private class DimensionCalculator implements Callable<int[]> {
+
+			@Override
+			public int[] call() throws IOException {
+				try (IsoFile file = new IsoFile(target.toFile())) {
+					VisualSampleEntry entry = file.getBoxes(VisualSampleEntry.class, true).get(0);
+					return new int[]{entry.getWidth(), entry.getHeight()};
+				}
 			}
 		}
 	}
