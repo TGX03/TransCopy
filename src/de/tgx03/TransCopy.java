@@ -133,7 +133,6 @@ public class TransCopy {
 				if (!op.deleteSourceIfExists()) COPIER.execute(op);
 			}
 			case "video" -> {
-				TASK_COUNT.increment();
 				VideoOperation op = new VideoOperation(source, target);
 				if (!op.deleteSourceIfExists()) ENCODER.execute(op);
 			}
@@ -360,6 +359,7 @@ public class TransCopy {
 					throw new RuntimeException(e);
 				}
 			}
+			TASK_COUNT.increment();
 			return false;
 		}
 
