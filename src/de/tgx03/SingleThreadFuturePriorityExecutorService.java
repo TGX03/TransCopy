@@ -150,9 +150,9 @@ public class SingleThreadFuturePriorityExecutorService extends AbstractExecutorS
 			while (!shutdown) {
 				try {
 					queue.take().run();
-				} catch (
-						InterruptedException e) {  // This should only be reached if the thread gets interrupted in a force shutdown.
-					if (!forceShutdown) throw new RuntimeException(e);
+				} catch (InterruptedException e) {
+					// This should only be reached if the thread gets interrupted in a force shutdown.
+					assert forceShutdown : e;
 				} catch (RuntimeException e) {
 					e.printStackTrace();
 				}
