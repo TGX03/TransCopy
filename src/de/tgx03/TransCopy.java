@@ -272,7 +272,13 @@ public class TransCopy {
 					Files.createDirectories(target.getParent());
 				}
 				System.out.println("Copying " + relative);
-				Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+				int errorCount = 0;
+				do {
+					Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+					errorCount++;
+				} while (!target.toFile().exists() && errorCount < 5);
+				if (errorCount >= 5) throw new IOException("Could not copy " + relative);
+				else Files.deleteIfExists(source);
 			} catch (IOException e) {
 				throw new UncheckedIOException(e);
 			} finally {
