@@ -130,11 +130,13 @@ public class TransCopy {
 		switch (mimeType) {
 			case "image" -> {
 				MoveOperation op = new MoveOperation(source, target);
-				if (!op.deleteSourceIfExists()) COPIER.execute(op);
+				if (op.deleteSourceIfExists()) TASK_COMPLETED.increment();
+				else COPIER.execute(op);
 			}
 			case "video" -> {
 				VideoOperation op = new VideoOperation(source, target);
-				if (!op.deleteSourceIfExists()) ENCODER.execute(op);
+				if (op.deleteSourceIfExists()) TASK_COMPLETED.increment();
+				else ENCODER.execute(op);
 			}
 		}
 	}
