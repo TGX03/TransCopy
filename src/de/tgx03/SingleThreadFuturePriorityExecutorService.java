@@ -159,8 +159,7 @@ public class SingleThreadFuturePriorityExecutorService extends AbstractExecutorS
 			}
 			while (!forceShutdown && !queue.isEmpty()) {
 				Runnable task = queue.poll();
-				if (task == null) break;
-				else {
+				if (task != null) {
 					try {
 						task.run();
 					} catch (RuntimeException e) {
