@@ -389,7 +389,7 @@ public class TransCopy {
 			@Override
 			public int[] call() throws IOException {
 				try (IsoFile file = new IsoFile(target.toFile())) {
-					VisualSampleEntry entry = file.getBoxes(VisualSampleEntry.class, true).get(0);
+					VisualSampleEntry entry = file.getBoxes(VisualSampleEntry.class, true).getFirst();
 					return new int[]{entry.getWidth(), entry.getHeight()};
 				}
 			}
