@@ -356,8 +356,9 @@ public class TransCopy {
 		 * @param target The target file.
 		 */
 		public VideoOperation(@NotNull Path source, @NotNull Path target) {
+			target = target.resolveSibling(target.getFileName().toString().replace(".m4v", ".mp4"));
 			super(source, target);
-			temp = TEMP.resolve(source.getFileName());
+			temp = TEMP.resolve(target.getFileName());
 		}
 
 		@Override
