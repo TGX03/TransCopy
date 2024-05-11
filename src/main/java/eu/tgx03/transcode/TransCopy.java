@@ -356,7 +356,7 @@ public class TransCopy {
 		 * @param target The target file.
 		 */
 		public VideoOperation(@NotNull Path source, @NotNull Path target) {
-			target = target.resolveSibling(target.getFileName().toString().replace(".m4v", ".mp4"));
+			target = target.resolveSibling(target.getFileName().toString().replace(getFileExtension(target.getFileName().toString()), ".mp4"));
 			super(source, target);
 			temp = TEMP.resolve(target.getFileName());
 		}
@@ -434,6 +434,11 @@ public class TransCopy {
 			} catch (InterruptedException e) {
 				return false;
 			}
+		}
+
+		private static String getFileExtension(String filename) {
+			String[] split = filename.split("\\.");
+			return split[split.length - 1];
 		}
 
 		/**
