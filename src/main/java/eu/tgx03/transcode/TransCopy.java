@@ -72,10 +72,6 @@ public class TransCopy {
 	 */
 	private static String maxRate;
 	/**
-	 * The scalar for the maximum bitrate, if for example all bitrates should be cut in half.
-	 */
-	private static float videoBitrateScale;
-	/**
 	 * Whether a specific preset should be used.
 	 */
 	private static String preset;
@@ -193,7 +189,6 @@ public class TransCopy {
 		options.addOption("cv", true, "The name of the video encoder to use");
 		options.addOption("cq", true, "The quality to use for videos. Must be an integer.");
 		options.addOption("maxrate", true, "The maximum rate to use for constant encoding.");
-		options.addOption("s", true, "How to scale the video bitrate. E.g. 0.5 will halve the bitrate of the input file");
 		options.addOption("ca", true, "The name of the audio encoder to use");
 		options.addOption("ba", true, "The bitrate to use for audio. Can be specified in usual FFMpeg units.");
 		options.addOption("i", true, "The name of the input directory");
@@ -204,7 +199,6 @@ public class TransCopy {
 		videoEncoder = cmd.getOptionValue("cv");
 		videoQuality = cmd.getOptionValue("cq");
 		maxRate = cmd.getOptionValue("maxrate");
-		videoBitrateScale = Float.parseFloat(cmd.getOptionValue("s"));
 		audioEncoder = cmd.getOptionValue("ca");
 		audioBitrate = cmd.getOptionValue("ba");
 		sourcePath = new File(cmd.getOptionValue("i")).toPath();
