@@ -64,10 +64,13 @@ public class TransCopy {
 	 */
 	private static String videoEncoder;
 	/**
-	 * The maximum bitrate to use.
-	 * If the scalar produces a lower bitrate, that one gets used instead.
+	 * The quality to use for video encodings.
 	 */
-	private static int videoBitrate;
+	private static String videoQuality;
+	/**
+	 * The maximum bitrate to send to FFMpeg for encoding.
+	 */
+	private static String maxRate;
 	/**
 	 * The scalar for the maximum bitrate, if for example all bitrates should be cut in half.
 	 */
@@ -188,7 +191,8 @@ public class TransCopy {
 		Options options = new Options();
 
 		options.addOption("cv", true, "The name of the video encoder to use");
-		options.addOption("bv", true, "The bitrate to use for videos. Must be in raw bits per second");
+		options.addOption("cq", true, "The quality to use for videos. Must be an integer.");
+		options.addOption("maxrate", true, "The maximum rate to use for constant encoding.");
 		options.addOption("s", true, "How to scale the video bitrate. E.g. 0.5 will halve the bitrate of the input file");
 		options.addOption("ca", true, "The name of the audio encoder to use");
 		options.addOption("ba", true, "The bitrate to use for audio. Can be specified in usual FFMpeg units.");
@@ -198,7 +202,8 @@ public class TransCopy {
 
 		CommandLine cmd = new DefaultParser().parse(options, args);
 		videoEncoder = cmd.getOptionValue("cv");
-		videoBitrate = Integer.parseInt(cmd.getOptionValue("bv"));
+		videoQuality = cmd.getOptionValue("cq");
+		maxRate = cmd.getOptionValue("maxrate");
 		videoBitrateScale = Float.parseFloat(cmd.getOptionValue("s"));
 		audioEncoder = cmd.getOptionValue("ca");
 		audioBitrate = cmd.getOptionValue("ba");
@@ -366,20 +371,11 @@ public class TransCopy {
 			try {
 				System.out.println("Encoding " + targetPath.relativize(target));
 
-				FFprobeResult ffprobe = FFprobe.atPath().setShowStreams(true).setInput(source).execute();
-				int bitrate = 0;
-				for (Stream stream : ffprobe.getStreams()) {
-					if (stream.getCodecType() == StreamType.VIDEO) {
-						bitrate = Integer.min(videoBitrate, (int) (stream.getBitRate() * videoBitrateScale));
-						break;
-					}
-				}
-				if (bitrate == 0) throw new IllegalArgumentException("Found no video stream in file " + source);
-
 				FFmpeg encoder = FFmpeg.atPath().addInput(UrlInput.fromPath(source))
 						.addArguments("-movflags", "faststart")
 						.addArguments("-c:v", videoEncoder)
-						.addArguments("-b:v", Integer.toString(bitrate))
+						.addArguments("-cq:v", videoQuality)
+						.addArguments("-maxrate", maxRate)
 						.addArguments("-c:a", audioEncoder)
 						.addArguments("-b:a", audioBitrate)
 						.addOutput(UrlOutput.toPath(temp));
