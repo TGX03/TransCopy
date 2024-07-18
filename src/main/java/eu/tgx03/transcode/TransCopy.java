@@ -72,9 +72,13 @@ public class TransCopy {
 	 */
 	private static String maxRate;
 	/**
-	 * Whether a specific preset should be used.
+	 * Whether a specific preset should be used for video encoding.
 	 */
-	private static String preset;
+	private static String videoPreset;
+	/**
+	 * Whether a specific preset should be used for audio encoding.
+	 */
+	private static String audioPreset;
 	/**
 	 * The name of the audio encoder to supply to FFMpeg.
 	 */
@@ -193,7 +197,8 @@ public class TransCopy {
 		options.addOption("ba", true, "The bitrate to use for audio. Can be specified in usual FFMpeg units.");
 		options.addOption("i", true, "The name of the input directory");
 		options.addOption("o", true, "The name of the output directory");
-		options.addOption("p", true, "The preset to use (optional)");
+		options.addOption("pv", true, "The preset to use for videos(optional)");
+		options.addOption("pa", "The preset to use for audio (optional)");
 
 		CommandLine cmd = new DefaultParser().parse(options, args);
 		videoEncoder = cmd.getOptionValue("cv");
@@ -203,7 +208,7 @@ public class TransCopy {
 		audioBitrate = cmd.getOptionValue("ba");
 		sourcePath = new File(cmd.getOptionValue("i")).toPath();
 		targetPath = new File(cmd.getOptionValue("o")).toPath();
-		preset = cmd.getOptionValue("p");
+		videoPreset = cmd.getOptionValue("pv");
 	}
 
 	/**
@@ -373,7 +378,8 @@ public class TransCopy {
 						.addArguments("-c:a", audioEncoder)
 						.addArguments("-b:a", audioBitrate)
 						.addOutput(UrlOutput.toPath(temp));
-				if (preset != null) encoder.addArguments("-preset", preset);
+				if (videoPreset != null) encoder.addArguments("-preset:v", videoPreset);
+				if (audioPreset != null) encoder.addArguments("-preset:a", audioPreset);
 				encoder.execute();
 				COPIER.execute(new MoveOperation(temp, target));
 				try {
