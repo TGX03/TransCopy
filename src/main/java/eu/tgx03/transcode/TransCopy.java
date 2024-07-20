@@ -209,7 +209,7 @@ public class TransCopy {
 		sourcePath = new File(cmd.getOptionValue("i")).toPath();
 		targetPath = new File(cmd.getOptionValue("o")).toPath();
 		videoPreset = cmd.getOptionValue("pv");
-		audioProfile = cmd.getOptionValue("pa")
+		audioProfile = cmd.getOptionValue("pa");
 	}
 
 	/**
