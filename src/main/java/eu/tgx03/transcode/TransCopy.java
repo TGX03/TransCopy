@@ -66,7 +66,7 @@ public class TransCopy {
 	/**
 	 * The quality to use for video encodings.
 	 */
-	private static String videoQuality;
+	private static String constantQuality;
 	/**
 	 * The maximum bitrate to send to FFMpeg for encoding.
 	 */
@@ -91,6 +91,7 @@ public class TransCopy {
 	 * The rc setting if used.
 	 */
 	private static String rc;
+	private static String qp;
 
 	/**
 	 * Copies images and videos from one location to another recursively,
@@ -204,17 +205,19 @@ public class TransCopy {
 		options.addOption("pv", true, "The preset to use for videos(optional)");
 		options.addOption("pa", "The profile to use for audio (optional)");
 		options.addOption("rc" ,"Specify an rc setting for FFMpeg");
+		options.addOption("qp", "Specify the qp setting for FFMPeg");
 
 		CommandLine cmd = new DefaultParser().parse(options, args);
 		videoEncoder = cmd.getOptionValue("cv");
-		videoQuality = cmd.getOptionValue("cq");
-		maxRate = cmd.getOptionValue("maxrate");
+		if (cmd.hasOption("cq")) constantQuality = cmd.getOptionValue("cq");
+		if (cmd.hasOption("maxrate")) maxRate = cmd.getOptionValue("maxrate");
+		if (cmd.hasOption("qp")) qp = cmd.getOptionValue("qp");
 		audioEncoder = cmd.getOptionValue("ca");
-		audioBitrate = cmd.getOptionValue("ba");
+		if (cmd.hasOption("ba")) audioBitrate = cmd.getOptionValue("ba");
 		sourcePath = new File(cmd.getOptionValue("i")).toPath();
 		targetPath = new File(cmd.getOptionValue("o")).toPath();
-		videoPreset = cmd.getOptionValue("pv");
-		audioProfile = cmd.getOptionValue("pa");
+		if (cmd.hasOption("pv")) videoPreset = cmd.getOptionValue("pv");
+		if (cmd.hasOption("pa")) audioProfile = cmd.getOptionValue("pa");
 		rc = cmd.getOptionValue("rc");
 	}
 
@@ -380,11 +383,12 @@ public class TransCopy {
 				FFmpeg encoder = FFmpeg.atPath().addInput(UrlInput.fromPath(source))
 						.addArguments("-movflags", "faststart")
 						.addArguments("-c:v", videoEncoder)
-						.addArguments("-cq:v", videoQuality)
-						.addArguments("-maxrate", maxRate)
 						.addArguments("-c:a", audioEncoder)
 						.addArguments("-b:a", audioBitrate)
 						.addOutput(UrlOutput.toPath(temp));
+				if (constantQuality != null) encoder.addArguments("-cq:v", constantQuality);
+				if (qp != null) encoder.addArguments("-qp", qp);
+				if (maxRate != null) encoder.addArguments("-maxrate", maxRate);
 				if (videoPreset != null) encoder.addArguments("-preset:v", videoPreset);
 				if (audioProfile != null) encoder.addArguments("-profile:a", audioProfile);
 				if (rc != null) encoder.addArguments("-rc", rc);
