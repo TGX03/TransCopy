@@ -87,6 +87,10 @@ public class TransCopy {
 	 * The bitrate of the audio stream.
 	 */
 	private static String audioBitrate;
+	/**
+	 * The rc setting if used.
+	 */
+	private static String rc;
 
 	/**
 	 * Copies images and videos from one location to another recursively,
@@ -199,6 +203,7 @@ public class TransCopy {
 		options.addOption("o", true, "The name of the output directory");
 		options.addOption("pv", true, "The preset to use for videos(optional)");
 		options.addOption("pa", "The profile to use for audio (optional)");
+		options.addOption("rc" ,"Specify an rc setting for FFMpeg");
 
 		CommandLine cmd = new DefaultParser().parse(options, args);
 		videoEncoder = cmd.getOptionValue("cv");
@@ -210,6 +215,7 @@ public class TransCopy {
 		targetPath = new File(cmd.getOptionValue("o")).toPath();
 		videoPreset = cmd.getOptionValue("pv");
 		audioProfile = cmd.getOptionValue("pa");
+		rc = cmd.getOptionValue("rc");
 	}
 
 	/**
@@ -381,6 +387,7 @@ public class TransCopy {
 						.addOutput(UrlOutput.toPath(temp));
 				if (videoPreset != null) encoder.addArguments("-preset:v", videoPreset);
 				if (audioProfile != null) encoder.addArguments("-profile:a", audioProfile);
+				if (rc != null) encoder.addArguments("-rc", rc);
 				encoder.execute();
 				COPIER.execute(new MoveOperation(temp, target));
 				try {
