@@ -204,7 +204,7 @@ public class TransCopy {
 		options.addOption("o", true, "The name of the output directory");
 		options.addOption("pv", true, "The preset to use for videos(optional)");
 		options.addOption("pa", "The profile to use for audio (optional)");
-		options.addOption("rc" ,"Specify an rc setting for FFMpeg");
+		options.addOption("rc", "Specify an rc setting for FFMpeg");
 		options.addOption("qp", "Specify the qp setting for FFMPeg");
 
 		CommandLine cmd = new DefaultParser().parse(options, args);
@@ -219,6 +219,21 @@ public class TransCopy {
 		if (cmd.hasOption("pv")) videoPreset = cmd.getOptionValue("pv");
 		if (cmd.hasOption("pa")) audioProfile = cmd.getOptionValue("pa");
 		rc = cmd.getOptionValue("rc");
+	}
+
+	/**
+	 * Changes the file extension of the path provided to whatever is provided as extension.
+	 * The extension is to be provided with the dot.
+	 *
+	 * @param path The path to change the extension of.
+	 * @param extension The extension to change to with the leading dot.
+	 * @return The path with the new extension
+	 */
+	@NotNull
+	private static Path setFileExtension(@NotNull Path path, @NotNull String extension) {
+		String filename = path.getFileName().toString();
+		filename = filename.replaceAll("\\.[^.]*$", extension);
+        return path.getParent().resolve(filename);
 	}
 
 	/**
@@ -370,7 +385,7 @@ public class TransCopy {
 		 * @param target The target file.
 		 */
 		public VideoOperation(@NotNull Path source, @NotNull Path target) {
-			target = target.resolveSibling(target.getFileName().toString().replace(getFileExtension(target.getFileName().toString()), "mp4"));
+			target = setFileExtension(target, ".mp4");
 			super(source, target);
 			temp = TEMP.resolve(target.getFileName());
 		}
@@ -444,11 +459,6 @@ public class TransCopy {
 			}
 		}
 
-		private static String getFileExtension(String filename) {
-			String[] split = filename.split("\\.");
-			return split[split.length - 1];
-		}
-
 		/**
 		 * The callable used to get the size of the video.
 		 */
@@ -458,7 +468,8 @@ public class TransCopy {
 			public int[] call() {
 				FFprobeResult result = FFprobe.atPath().setInput(target).setShowStreams(true).execute();
 				for (Stream stream : result.getStreams()) {
-					if (stream.getCodecType() == StreamType.VIDEO) return new int[]{stream.getWidth(), stream.getHeight()};
+					if (stream.getCodecType() == StreamType.VIDEO)
+						return new int[]{stream.getWidth(), stream.getHeight()};
 				}
 				throw new IllegalArgumentException("File has no video stream");
 			}
