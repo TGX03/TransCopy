@@ -92,6 +92,10 @@ public class TransCopy {
 	 */
 	private static String rc;
 	private static String qp;
+	/**
+	 * The hwaccel setting if used
+	 */
+	private static String hwaccel;
 
 	/**
 	 * Copies images and videos from one location to another recursively,
@@ -205,7 +209,8 @@ public class TransCopy {
 		options.addOption("pv", true, "The preset to use for videos(optional)");
 		options.addOption("pa", "The profile to use for audio (optional)");
 		options.addOption("rc", "Specify an rc setting for FFMpeg");
-		options.addOption("qp", "Specify the qp setting for FFMPeg");
+		options.addOption("qp", "Specify the qp setting for FFMpeg");
+		options.addOption("hwaccel", "Specify the hwacecl parameter for FFMpeg");
 
 		CommandLine cmd = new DefaultParser().parse(options, args);
 		videoEncoder = cmd.getOptionValue("cv");
@@ -219,6 +224,7 @@ public class TransCopy {
 		if (cmd.hasOption("pv")) videoPreset = cmd.getOptionValue("pv");
 		if (cmd.hasOption("pa")) audioProfile = cmd.getOptionValue("pa");
 		rc = cmd.getOptionValue("rc");
+		if (cmd.hasOption("hwaccel")) hwaccel = cmd.getOptionValue("hwaccel");
 	}
 
 	/**
@@ -395,7 +401,11 @@ public class TransCopy {
 			try {
 				System.out.println("Encoding " + targetPath.relativize(target));
 
-				FFmpeg encoder = FFmpeg.atPath().addInput(UrlInput.fromPath(source))
+				FFmpeg encoder = FFmpeg.atPath();
+
+				if (hwaccel != null) encoder.addArguments("hwaccel", hwaccel);
+
+				encoder = encoder.addInput(UrlInput.fromPath(source))
 						.addArguments("-movflags", "faststart")
 						.addArguments("-c:v", videoEncoder)
 						.addArguments("-c:a", audioEncoder)
