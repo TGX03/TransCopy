@@ -1,14 +1,12 @@
 package eu.tgx03.ffmpeg;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 
 /**
  * Represents an ffmpeg command that can get executed
@@ -88,11 +86,13 @@ public class Command implements Callable<List<String>> {
     }
 
     @Override
-    public List<String> call() throws Exception {
+    public List<String> call() throws IOException, ExecutionException, InterruptedException, FFMPEGException {
         Process process = Runtime.getRuntime().exec(toString());
         EXECUTOR.submit(new StreamReader(process.getInputStream()));
         Future<List<String>> errorReader = EXECUTOR.submit(new StreamReader(process.getErrorStream()));    // FFMPEG writes output to stderr
-        return errorReader.get();
+        List<String> result = errorReader.get();
+        if (process.exitValue() == 0) return result;
+        else throw new FFMPEGException("FFMpeg exited with code " + process.exitValue(), result);
     }
 
     /**
@@ -107,6 +107,7 @@ public class Command implements Callable<List<String>> {
 
         /**
          * Create a new reader which can then be submitted to empty stdout or stderr.
+         *
          * @param stream The stream to read from.
          */
         public StreamReader(InputStream stream) {
