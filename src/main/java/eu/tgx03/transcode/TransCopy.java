@@ -34,8 +34,7 @@ public class TransCopy {
 	private static final ExecutorService COPIER = new SingleThreadFuturePriorityExecutorService();
 	/**
 	 * A queue for video encodings.
-	 * Used as parallel encoding usually doesn't make much sense,
-	 * and when using NVENC for example not even possible.
+	 * Used as parallel encoding usually makes little sense.
 	 */
 	private static final ExecutorService ENCODER = Executors.newSingleThreadExecutor();
 	/**
