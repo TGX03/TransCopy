@@ -409,6 +409,12 @@ public class TransCopy {
             result.get();
         }
 
+        /**
+         * Replaces the file extension of a given path with a new extension.
+         * @param path The old path to get a new extension.
+         * @param extension The new extension to set.
+         * @return The original path with a new extension.
+         */
         private static Path setFileExtension(@NotNull Path path, @NotNull String extension) {
             String filename = path.getFileName().toString();
             filename = filename.replaceAll("\\.[^.]*$", extension);
