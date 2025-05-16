@@ -39,7 +39,12 @@ public class TransCopy {
     /**
      * The thread pool used for the threads which traverse the directory.
      */
-    private static final ExecutorService VIRTUAL_EXECUTOR = new ThreadPoolExecutor(2, Runtime.getRuntime().availableProcessors() * 2, 20, TimeUnit.SECONDS, new LinkedBlockingQueue<>(), r -> Thread.ofVirtual().unstarted(r));
+    private static final ExecutorService VIRTUAL_EXECUTOR = Executors.newCachedThreadPool(r -> Thread.ofVirtual().unstarted(r));
+    /**
+     * Pool for scanning files.
+     * Doesn't get executed in the virtual executor as that overwhelms any computer.
+     */
+    private static final ExecutorService CROPDETECT_SCANNERS =  new ThreadPoolExecutor(2, Runtime.getRuntime().availableProcessors(), 20, TimeUnit.SECONDS, new LinkedBlockingQueue<>(), r -> Thread.ofVirtual().unstarted(r));
     /**
      * Counter for how many tasks exist in total.
      */
@@ -94,6 +99,8 @@ public class TransCopy {
         rootPhaser.arriveAndAwaitAdvance();
         VIRTUAL_EXECUTOR.shutdown();
         VIRTUAL_EXECUTOR.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
+        CROPDETECT_SCANNERS.shutdown();
+        CROPDETECT_SCANNERS.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
         ENCODER.shutdown();
         ENCODER.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
         COPIER.shutdown();
@@ -189,7 +196,7 @@ public class TransCopy {
 
         switch (mimeType) {
             case "image" -> COPIER.execute(new ImageOperation(relativePath));
-            case "video" -> VIRTUAL_EXECUTOR.execute(new VideoOperation(relativePath));
+            case "video" -> CROPDETECT_SCANNERS.execute(new VideoOperation(relativePath));
         }
     }
 
