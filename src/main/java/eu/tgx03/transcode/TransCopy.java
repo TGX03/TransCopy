@@ -39,7 +39,7 @@ public class TransCopy {
     /**
      * The thread pool used for the threads which traverse the directory.
      */
-    private static final ExecutorService VIRTUAL_EXECUTOR = Executors.newCachedThreadPool(r -> Thread.ofVirtual().unstarted(r));
+    private static final ExecutorService VIRTUAL_EXECUTOR = Executors.newCachedThreadPool(r -> Thread.ofPlatform().unstarted(r));
     /**
      * Pool for scanning files.
      * Doesn't get executed in the virtual executor as that overwhelms any computer.
