@@ -51,7 +51,7 @@ public class Input {
     public String toString() {
         StringBuilder builder = new StringBuilder();
         for (String argument : arguments) {
-            builder.append(" ").append(argument);
+            builder.append(argument).append(" ");
         }
         builder.append("-i ").append(enquote(input));
         return builder.toString();
