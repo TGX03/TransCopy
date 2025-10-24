@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.*;
 
@@ -40,6 +41,17 @@ public class Command implements Callable<List<String>> {
      */
     public Command() {
         prefixes.add("-hide_banner");   // Always get rid of the FFMPEG banner
+    }
+
+    private static String[] squashArray(List<? extends ToArray<String>> list) {
+        String[] result = new String[0];
+        for (ToArray<String> element : list) {
+            String[] elements = element.toArray();
+            int oldSize = result.length;
+            result = Arrays.copyOf(elements, result.length + elements.length);
+            System.arraycopy(elements, 0, result, oldSize, elements.length);
+        }
+        return result;
     }
 
     /**
@@ -87,8 +99,19 @@ public class Command implements Callable<List<String>> {
 
     @Override
     public List<String> call() throws IOException, ExecutionException, InterruptedException, FFMPEGException {
-        Process process = Runtime.getRuntime().exec(toString());
-        EXECUTOR.submit(new StreamReader(process.getInputStream()));
+        // Combines the three arrays containing the options for FFMpeg plus the ffmpeg executable itseld into one array that can be passed to ProcessBuilder.
+        String[] input = squashArray(this.inputs);
+        String[] output = squashArray(this.outputs);
+        String[] cmd = new String[prefixes.size() + input.length + output.length + 1];
+        cmd[0] = "ffmpeg";
+        System.arraycopy(prefixes.toArray(new String[0]), 0, cmd, 1, prefixes.size());
+        System.arraycopy(input, 0, cmd, prefixes.size() + 1, input.length);
+        System.arraycopy(output, 0, cmd, prefixes.size() + input.length + 1, output.length);
+
+        ProcessBuilder builder = new ProcessBuilder(cmd);
+        builder.redirectOutput(ProcessBuilder.Redirect.DISCARD);
+        Process process = builder.start();
+
         Future<List<String>> errorReader = EXECUTOR.submit(new StreamReader(process.getErrorStream()));    // FFMPEG writes output to stderr
         List<String> result = errorReader.get();
         if (process.exitValue() == 0) return result;

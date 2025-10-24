@@ -1,6 +1,7 @@
 package eu.tgx03.ffmpeg;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -8,7 +9,7 @@ import java.util.List;
  * Represents an output file or stream for an FFMpeg command alongside its associated arguments.
  * The output can include encoding options, filters, and other configurations.
  */
-public class Output {
+public class Output implements ToArray<String> {
 
     /**
      * A list of arguments associated with the output. These arguments represent options,
@@ -34,8 +35,8 @@ public class Output {
     /**
      * Constructs an Output instance for the specified output destination and additional arguments.
      *
-     * @param output The output destination of an FFMpeg command. This can be a file path
-     *               or a special identifier, such as a stream destination.
+     * @param output    The output destination of an FFMpeg command. This can be a file path
+     *                  or a special identifier, such as a stream destination.
      * @param arguments Additional arguments to apply to this output. These represent options,
      *                  configurations, or filters associated with the output in an FFMpeg command.
      */
@@ -45,12 +46,22 @@ public class Output {
     }
 
     /**
+     * Wraps the given string in double quotes.
+     *
+     * @param string The string to be wrapped in double quotes.
+     * @return A new string with the input wrapped in double quotes.
+     */
+    private static String enquote(String string) {
+        return "\"" + string + "\"";
+    }
+
+    /**
      * Adds an argument to be applied to this Output.
      *
      * @param argument The argument to be added.
      */
     public void addArgument(String argument) {
-        arguments.add(argument);
+        this.arguments.addAll(Arrays.asList(argument.split(" ")));
     }
 
     @Override
@@ -64,12 +75,17 @@ public class Output {
     }
 
     /**
-     * Wraps the given string in double quotes.
+     * Returns an array which contains all arguments correctly split for usage by ProcessBuilder,
+     * meaning every positional argument has its own slot in the array.
+     * This also means no enquoting is necessary for spaces.
      *
-     * @param string The string to be wrapped in double quotes.
-     * @return A new string with the input wrapped in double quotes.
+     * @return An array of all the arguments in this object.
      */
-    private static String enquote(String string) {
-        return "\"" + string + "\"";
+    @Override
+    public String[] toArray() {
+        String[] result = new String[this.arguments.size() + 1];
+        this.arguments.toArray(result);
+        result[result.length - 1] = this.output;
+        return result;
     }
 }
