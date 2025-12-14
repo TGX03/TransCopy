@@ -373,6 +373,8 @@ public class TransCopy {
             for (String prefix : prefixOptions) command.addPrefix(prefix);
 
             Output output = new Output("-");
+            output.addArgument("-map 0:v:0");
+            output.addArgument("-c:v vnull");
             output.addArgument("-filter:v cropdetect");
             output.addArgument("-f null");
             command.addOutput(output);
