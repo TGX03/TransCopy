@@ -87,7 +87,7 @@ public class TransCopy {
      * Copies images and videos from one location to another recursively,
      * while transcoding videos in the process.
      *
-     * @param args First argument is the source, second is the target, third is the Handbrake executable, and fourth is the name of the Handbrake preset.
+     * @param args First argument is the source, second is the target, third may be -cropdetect to auto-crop videos, then general options, then -input to specify input options, then -output to specify output options
      */
     public static void main(@NotNull String @NotNull [] args) throws InterruptedException {
         parseCommandLine(args);
