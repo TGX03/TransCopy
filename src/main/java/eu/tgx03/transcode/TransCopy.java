@@ -369,7 +369,9 @@ public class TransCopy {
         @Nullable
         private String cropdetect() throws IOException, ExecutionException, InterruptedException {
             Command command = new Command();
-            command.addInput(new Input(inputPath.toAbsolutePath().toString()));
+            Input input = new Input(inputPath.toAbsolutePath().toString());
+            for (String option : inputOptions) input.addArgument(option);
+            command.addInput(input);
             for (String prefix : prefixOptions) command.addPrefix(prefix);
 
             Output output = new Output("-");
