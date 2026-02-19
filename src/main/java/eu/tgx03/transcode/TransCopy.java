@@ -186,7 +186,12 @@ public class TransCopy {
         TASK_COUNT.increment();
 
         // Determine the type of file.
-        String mimeType = URLConnection.guessContentTypeFromName(file.getName());
+        String mimeType;
+        try {
+            mimeType = Files.probeContentType(file.toPath());
+        } catch (IOException e) {
+            mimeType = null;
+        }
         if (mimeType == null) return;
         mimeType = mimeType.split("/")[0];
 
