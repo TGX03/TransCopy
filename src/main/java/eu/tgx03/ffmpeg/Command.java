@@ -114,6 +114,7 @@ public class Command implements Callable<List<String>> {
 
         Future<List<String>> errorReader = EXECUTOR.submit(new StreamReader(process.getErrorStream()));    // FFMPEG writes output to stderr
         List<String> result = errorReader.get();
+        process.waitFor();  // Apparently this is necessary on Linux, on Windows the line above waits for the process to terminate
         if (process.exitValue() == 0) return result;
         else throw new FFMPEGException("FFMpeg exited with code " + process.exitValue(), result);
     }
