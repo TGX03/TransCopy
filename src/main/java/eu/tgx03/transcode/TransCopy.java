@@ -382,7 +382,7 @@ public class TransCopy {
             Output output = new Output("-");
             output.addArgument("-map 0:v:0");
             output.addArgument("-c:v vnull");
-            output.addArgument("-filter:v cropdetect");
+            output.addArgument("-filter:v cropdetect=round=2");
             output.addArgument("-f null");
             command.addOutput(output);
             List<String> ffmpegOut = command.call();
